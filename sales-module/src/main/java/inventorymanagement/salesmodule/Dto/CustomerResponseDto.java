@@ -14,6 +14,10 @@ public class CustomerResponseDto {
         this.phoneNumber = phoneNumber;
         this.email = email;
     }
+    public CustomerResponseDto(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
 
     // Getters and Setters
     public Long getCustomerId() {

@@ -61,4 +61,16 @@ public class PurchaseController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+    @GetMapping("/vendorNames")
+    public ResponseEntity<List<String>> getVendorNames(){
+    	log.info("fetching vendor names");
+    	List<String> vendorNames=purchaseService.getVendorNames();
+    	 return ResponseEntity.ok(vendorNames);
+    }
+    @GetMapping("/itemNames")
+    public ResponseEntity<List<String>> getItemNames(){
+    	log.info("Fetching itemNames");
+    	List<String> items=purchaseService.getItemNames();
+    	return ResponseEntity.ok(items);
+    }
 }

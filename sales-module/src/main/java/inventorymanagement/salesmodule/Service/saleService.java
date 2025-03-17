@@ -4,16 +4,26 @@ import inventorymanagement.salesmodule.Dto.SaleRequestDto;
 import inventorymanagement.salesmodule.Dto.SaleResponseDto;
 import inventorymanagement.salesmodule.Dto.CustomerResponseDto;
 import inventorymanagement.salesmodule.Repository.salesRepo;
+import inventorymanagement.salesmodule.exception.InsufficientStockException;
 //import com.sales.sales.client.StockFeignClient;
 import inventorymanagement.salesmodule.exception.SaleNotFoundException;
+import inventorymanagement.salesmodule.feign.StockFeignClient;
 import inventorymanagement.salesmodule.model.Customer;
 import inventorymanagement.salesmodule.model.Sales;
+import jakarta.transaction.Transactional;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+//import org.springframework.data.domain.PageRequest;
+//import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,6 +37,14 @@ public class saleService {
 
     @Autowired
     private customerService customerService;
+    
+    @Autowired
+    private StockFeignClient stockFeignClient;
+    
+    
+    public List<String> getStockItemNames() {
+        return stockFeignClient.getStockItemNames().getBody();
+    }
     
 
 
@@ -75,42 +93,63 @@ public class saleService {
         return saleResponse;
     }
 
+    @Transactional
     public SaleResponseDto createSale(SaleRequestDto saleRequestDto) {
         logger.info("Entering createSale method with item: {}", saleRequestDto.getItemName());
 
+        // Retrieve or create the customer details
         Customer customer = customerService.getOrCreateCustomer(
-            saleRequestDto.getCustomerName(),
-            saleRequestDto.getCustomerPhone(),
-            saleRequestDto.getCustomerEmail(),
-            saleRequestDto.getCustomerAddress()
+                saleRequestDto.getCustomerName(),
+                saleRequestDto.getCustomerPhone(),
+                saleRequestDto.getCustomerEmail(),
+                saleRequestDto.getCustomerAddress()
         );
 
+        // Check stock availability before creating the sale
+        ResponseEntity<Boolean> stockCheckResponse = stockFeignClient.checkStockAvailability(
+                saleRequestDto.getItemName(), saleRequestDto.getQuantity()
+        );
+
+        if (!Boolean.TRUE.equals(stockCheckResponse.getBody())) {
+            logger.info("Insufficient stock for item: {}", saleRequestDto.getItemName());
+            throw new InsufficientStockException("Insufficient stock for item: " + saleRequestDto.getItemName());
+        }
+
+        // Create and save the sale entity
         Sales sale = new Sales();
         sale.setCustomer(customer);
         sale.setItemName(saleRequestDto.getItemName());
         sale.setQuantity(saleRequestDto.getQuantity());
-        sale.setPrice(saleRequestDto.getPrice());
+        sale.setPrice(saleRequestDto.getPrice()); // Set the price per item
         sale.setSaleDate(LocalDateTime.now());
 
+        // Save sale entity in the repository
         Sales newSale = repository.save(sale);
         logger.info("Created new sale with id: {}", newSale.getSaleId());
 
+        // Update stock quantity via Stock Service
+        stockFeignClient.updateStockQuantity(saleRequestDto.getItemName(), saleRequestDto.getQuantity());
+
+        // Create SaleResponseDto with total price (price per item * quantity)
+        double totalPrice = newSale.getPrice() * newSale.getQuantity(); // Calculate total price
         SaleResponseDto saleResponse = new SaleResponseDto(
-            newSale.getSaleId(),
-            newSale.getItemName(),
-            newSale.getQuantity(),
-            newSale.getPrice(),
-            newSale.getSaleDate(),
-            new CustomerResponseDto(
-                newSale.getCustomer().getCustomerId(),
-                newSale.getCustomer().getName(),
-                newSale.getCustomer().getContactDetails().getPhoneNumber(),
-                newSale.getCustomer().getContactDetails().getEmail()
-            )
+                newSale.getSaleId(),
+                newSale.getItemName(),
+                newSale.getQuantity(),
+                totalPrice, // Set total price in the "price" field
+                newSale.getSaleDate(),
+                new CustomerResponseDto(
+                        newSale.getCustomer().getCustomerId(),
+                        newSale.getCustomer().getName(),
+                        newSale.getCustomer().getContactDetails().getPhoneNumber(),
+                        newSale.getCustomer().getContactDetails().getEmail()
+                )
         );
+
         logger.info("Exiting createSale method with sale: {}", saleResponse);
         return saleResponse;
     }
+
 
     public SaleResponseDto updateSale(Long id, SaleRequestDto saleRequestDto) {
         logger.info("Entering updateSale method with id: {}", id);
@@ -183,4 +222,39 @@ public class saleService {
         logger.info("Deleted sale with id: {}", id);
         logger.info("Exiting deleteSale method");
     }
+    
+    public List<Object[]> getRecentSales() {
+        logger.info("Entering getRecentSales method with limit: 3");
+
+        // Fetch recent sales with a fixed limit of 3
+        List<Sales> recentSales = repository.findByOrderBySaleDateDesc(Pageable.ofSize(3)); // Limit is set here
+
+        // Map to the simplified format (itemName, quantity, price)
+        List<Object[]> recentSalesSummary = recentSales.stream()
+                .map(sale -> new Object[]{sale.getItemName(), sale.getQuantity(), sale.getPrice()})
+                .collect(Collectors.toList());
+
+        logger.info("Fetched {} recent sales", recentSalesSummary.size());
+        logger.info("Exiting getRecentSales method");
+        return recentSalesSummary;
+    }
+    
+    public List<Object[]> getTotalRevenuePerItem() {
+        logger.info("Entering getTotalRevenuePerItem method");
+
+        // Fetch total revenue grouped by item
+        List<Object[]> totalRevenuePerItem = repository.findRevenuePerItem();
+
+        logger.info("Fetched total revenue for {} items", totalRevenuePerItem.size());
+        logger.info("Exiting getTotalRevenuePerItem method");
+        return totalRevenuePerItem;
+    }
+
+
+    
+   
+
+
+
+
 }

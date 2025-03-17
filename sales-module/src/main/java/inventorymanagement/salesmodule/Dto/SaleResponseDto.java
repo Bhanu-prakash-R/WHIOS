@@ -22,6 +22,11 @@ public class SaleResponseDto {
         this.saleDate = saleDate;
         this.customer = customer;
     }
+    public SaleResponseDto(Long saleId, String itemName) {
+        this.saleId = saleId;
+        this.itemName = itemName;
+    }
+
 
     // Getters and Setters
     public Long getSaleId() {

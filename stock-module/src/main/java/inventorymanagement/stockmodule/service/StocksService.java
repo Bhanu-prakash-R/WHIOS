@@ -6,14 +6,22 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import inventorymanagement.stockmodule.dao.StocksRepository;
+import inventorymanagement.stockmodule.Client.PurchaseFeignClient;
+import inventorymanagement.stockmodule.Client.VendorFeignClient;
+import inventorymanagement.stockmodule.Client.ZoneFeignClient;
 import inventorymanagement.stockmodule.dao.NotificationRepository;
+import inventorymanagement.stockmodule.dto.ItemNameQuantityDto;
 import inventorymanagement.stockmodule.dto.StockDTO;
 import inventorymanagement.stockmodule.entity.Notification;
 import inventorymanagement.stockmodule.entity.Stocks;
 import inventorymanagement.stockmodule.exception.StockNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -24,6 +32,15 @@ public class StocksService {
 
     @Autowired
     private StocksRepository stockRepository;
+    
+    @Autowired
+    private VendorFeignClient vendorFeignClient;
+    
+    @Autowired
+    private ZoneFeignClient zoneFeignClient;
+    
+    @Autowired
+    private PurchaseFeignClient purchaseFeignClient;
 
     @Autowired
     private NotificationRepository notificationRepository;
@@ -75,13 +92,37 @@ public class StocksService {
     // 1. Create Stock
     @Transactional
     public StockDTO createStock(StockDTO stockDTO) {
-        log.info("Creating stock with itemName: {}", stockDTO.getItemName());
-        Stocks stock = convertToEntity(stockDTO);
-        stock =stockRepository.save(stock);
-        stockRepository.saveAndFlush(stock);  // Ensure the persistence context is flushed
-        log.info("Created At: {}", stock.getCreatedAt()); // Debug logging
-        return convertToDTO(stock);
+        log.info("Creating or updating stock with itemName: {}", stockDTO.getItemName());
+
+        // Check if the item already exists in stock
+        Optional<Stocks> existingStock = stockRepository.findByItemName(stockDTO.getItemName());
+
+        Stocks stock;
+        if (existingStock.isPresent()) {
+            // If stock exists, increment the quantity
+            stock = existingStock.get();
+            stock.setQuantity(stock.getQuantity() + stockDTO.getQuantity()); // Add new quantity to existing
+            log.info("Stock updated for itemName: {}. New quantity: {}", stock.getItemName(), stock.getQuantity());
+        } else {
+            // If stock does not exist, create a new stock entry
+            stock = convertToEntity(stockDTO);
+            log.info("New stock entry created for itemName: {} with quantity: {}", stock.getItemName(), stock.getQuantity());
+        }
+
+        // Save the stock and flush to ensure persistence
+        stock = stockRepository.save(stock);
+        stockRepository.saveAndFlush(stock);
+
+        // Convert the stock entity to a DTO
+        StockDTO responseDTO = convertToDTO(stock);
+
+        // Replace the price field with the total price (price * quantity)
+        responseDTO.setPrice(stock.getPrice() * stock.getQuantity());
+
+        log.info("Created or updated stock with total price: {}", responseDTO.getPrice());
+        return responseDTO;
     }
+
 
     // 2. Display All Stocks
     public List<StockDTO> getAllStocks() {
@@ -209,6 +250,29 @@ public class StocksService {
         }
         log.info("Completed checking for low stock and sending notifications.");
     }
+    
+    @Transactional
+    public boolean checkStockAvailability(String itemName, int quantity) {
+        Optional<Stocks> stockItemOptional = stockRepository.findByItemName(itemName);
+        return stockItemOptional.map(stockItem -> stockItem.getQuantity() >= quantity).orElse(false);
+    }
+
+    // 8. Update Stock Quantity
+    @Transactional
+    public void updateStockQuantity(String itemName, int quantity) {
+        Optional<Stocks> stockItemOptional = stockRepository.findByItemName(itemName);
+        if (stockItemOptional.isPresent()) {
+            Stocks stockItem = stockItemOptional.get();
+            if (stockItem.getQuantity() >= quantity) {
+                stockItem.setQuantity(stockItem.getQuantity() - quantity);
+                stockRepository.save(stockItem);
+            } else {
+                throw new RuntimeException("Insufficient stock for item: " + itemName);
+            }
+        } else {
+            throw new RuntimeException("Stock item not found: " + itemName);
+        }
+    }
     // 8. Get All Stock Names
     public List<String> getAllStockNames() {
         log.info("Fetching all stock names");
@@ -222,4 +286,70 @@ public class StocksService {
         log.info("Fetched stock names: {}", stockNames);
         return stockNames;
     }
+    
+    public List<String> getAvailableItemNamesForStock() {
+        log.info("Fetching item names not already in stock...");
+
+        // Item names already in stock
+        List<String> stockItemNames = stockRepository.findAll().stream()
+                .map(Stocks::getItemName)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Item names from Purchase records
+        List<String> purchaseItemNames = purchaseFeignClient.getItemNames();
+
+        // Exclude items already in stock
+        List<String> availableItemNames = purchaseItemNames.stream()
+                .filter(itemName -> !stockItemNames.contains(itemName))
+                .collect(Collectors.toList());
+
+        log.info("Available item names for stock addition: {}", availableItemNames);
+        return availableItemNames;
+    }
+
+    public List<String> getVendorNames(){
+    	log.info("Fetching all vendor names");
+    	return vendorFeignClient.getVendorNames();
+    }
+    
+    public List<String> getNamesOfActiveZones(){
+    	log.info("Fetching Active zone Names");
+    	return zoneFeignClient.getNamesOfActiveZones();
+    			
+    }
+    public List<String> getItemNames(){
+    	log.info("fetching itemNames from purchase");
+    	return purchaseFeignClient.getItemNames();
+    }
+    
+    public List<ItemNameQuantityDto> getItemNameAndQuantity() {
+        log.info("Fetching item name and quantity from the stock database");
+
+        List<Object[]> results = stockRepository.findItemNameAndQuantity();
+        log.info("Fetched {} records", results.size());
+
+        // Convert query results to ItemQuantityDTO
+        List<ItemNameQuantityDto> stockMetrics = results.stream()
+                .map(result -> new ItemNameQuantityDto((String) result[0], ((Number) result[1]).intValue()))
+                .collect(Collectors.toList());
+        log.info("Successfully transformed stock data into ItemQuantityDTO list");
+
+        return stockMetrics;
+    }
+
+    /*public List<Map<String, Object>> getGraphMetrics() {
+        List<Object[]> data = stockRepository.findItemNameAndQuantity();
+        List<Map<String, Object>> graphData = new ArrayList<>();
+
+        for (Object[] row : data) {
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("itemName", row[0]);
+            entry.put("quantity", row[1]);
+            graphData.add(entry);
+        }
+        return graphData;
+    }*/
+
+    
 }

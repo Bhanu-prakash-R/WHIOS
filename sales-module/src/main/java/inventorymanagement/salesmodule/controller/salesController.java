@@ -100,6 +100,12 @@ public class salesController {
             throw new RuntimeException("Unable to fetch sales for customer", e);
         }
     }
+    
+    @GetMapping("/stock-item-names")
+    public ResponseEntity<List<String>> getStockItemNames() {
+        List<String> itemNames = salesService.getStockItemNames();
+        return ResponseEntity.ok(itemNames);
+    }
 
     // Delete a sale by ID
     @DeleteMapping("/{id}")
@@ -116,5 +122,23 @@ public class salesController {
             throw new RuntimeException("Unable to delete sale", e);
         }
     }
+    
+    @GetMapping("/recent")
+    public ResponseEntity<List<Object[]>> getRecentSales() {
+        logger.info("Fetching 3 recent sales");
+        List<Object[]> recentSales = salesService.getRecentSales();
+        return ResponseEntity.ok(recentSales);
+    }
+    
+    @GetMapping("/revenues")
+    public ResponseEntity<List<Object[]>> getTotalRevenuePerItem() {
+        logger.info("Fetching total revenue per item");
+        List<Object[]> totalRevenue = salesService.getTotalRevenuePerItem();
+        return ResponseEntity.ok(totalRevenue);
+    }
+
+
+    
+    
     
 }

@@ -49,4 +49,8 @@ public class StockDTO {
         this.notificationMessages = notificationMessages;
         this.createdAt = createdAt;
     }
+    public StockDTO(String itemName, int quantity) {
+        this.itemName = itemName;
+        this.quantity = quantity;
+    }
 }
