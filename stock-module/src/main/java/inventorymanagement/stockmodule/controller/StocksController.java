@@ -1,7 +1,7 @@
 package inventorymanagement.stockmodule.controller;
 
 import java.util.List;
-
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +14,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import inventorymanagement.stockmodule.dto.ItemNameQuantityDto;
 import inventorymanagement.stockmodule.dto.StockDTO;
 import inventorymanagement.stockmodule.exception.InsufficientStockException;
 import inventorymanagement.stockmodule.exception.StockNotFoundException;
@@ -75,6 +77,21 @@ public class StocksController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    
+    @GetMapping("/vendorNames")
+    public ResponseEntity<List<String>> getVendorNames(){
+    	List<String> vendorNames=stocksService.getVendorNames();
+    	return  ResponseEntity.ok(vendorNames);
+    }
+    
+    @GetMapping("/ActiveZoneNames")
+    public ResponseEntity<List<String>> getActiveZoneNames(){
+    	List<String> zoneNames=stocksService.getNamesOfActiveZones();
+    	return ResponseEntity.ok(zoneNames);
+    }
+    
+   
+
 
     // 4. Remove Stock
     @DeleteMapping("/remove/{stockId}/{quantity}")
@@ -144,6 +161,18 @@ public class StocksController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    
+    @GetMapping("/check-availability")
+    public ResponseEntity<Boolean> checkStockAvailability(@RequestParam String itemName, @RequestParam int quantity) {
+        boolean isAvailable = stocksService.checkStockAvailability(itemName, quantity);
+        return ResponseEntity.ok(isAvailable);
+    }
+
+    @PutMapping("/update-quantity")
+    public ResponseEntity<Void> updateStockQuantity(@RequestParam String itemName, @RequestParam int quantity) {
+        stocksService.updateStockQuantity(itemName, quantity);
+        return ResponseEntity.noContent().build();
+    }
 
     // 8. Fetch Only Stock Names
     @GetMapping("/StockItemNames")
@@ -158,4 +187,42 @@ public class StocksController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    @GetMapping("/puchaseItemNames")
+    public ResponseEntity<List<String>> getItemNames(){
+    	log.info("fetching all itemNames from purchase");
+    	List<String> purchaseItemNames=stocksService.getItemNames();
+    	return ResponseEntity.ok(purchaseItemNames);
+    }
+    
+    @GetMapping("/available-item-names")
+    public ResponseEntity<List<String>> getAvailableItemNamesForStock() {
+        List<String> availableItemNames = stocksService.getAvailableItemNamesForStock();
+        return ResponseEntity.ok(availableItemNames);
+    }
+    @GetMapping("/metrics")
+    public ResponseEntity<List<ItemNameQuantityDto>> getItemNameAndQuantity() {
+        log.info("Received request to fetch stock metrics");
+
+        List<ItemNameQuantityDto> stockMetrics = stocksService.getItemNameAndQuantity();
+        log.info("Returning stock metrics with {} records", stockMetrics.size());
+
+        return ResponseEntity.ok(stockMetrics);
+    }
+
+
+    
+    /*@GetMapping("/stockMetrics")
+    public ResponseEntity<List<Map<String, Object>>> getGraphMetrics() {
+        log.info("Received request to fetch graph metrics for stock");
+
+        try {
+            List<Map<String, Object>> graphMetrics = stocksService.getGraphMetrics();
+            log.info("Successfully fetched graph metrics, data size: {}", graphMetrics.size());
+            return ResponseEntity.ok(graphMetrics);
+
+        } catch (Exception ex) {
+            log.error("An error occurred while fetching graph metrics: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }*/
 }

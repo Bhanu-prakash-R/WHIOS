@@ -2,6 +2,7 @@ package inventorymanagement.purchasemodule.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import inventorymanagement.purchasemodule.Client.VendorFeignClient;
 import inventorymanagement.purchasemodule.dao.PurchaseDao;
 import inventorymanagement.purchasemodule.dto.PurchaseDto;
 import inventorymanagement.purchasemodule.entity.Purchase;
@@ -17,6 +18,8 @@ public class PurchaseService {
 
     @Autowired
     private PurchaseDao purchaseDao;
+    @Autowired
+    private VendorFeignClient vendorFeignClient;
 
     public List<PurchaseDto> getAllPurchases() {
         return purchaseDao.findAll().stream()
@@ -29,10 +32,24 @@ public class PurchaseService {
     }
 
     public PurchaseDto savePurchase(PurchaseDto purchaseDto) {
+        // Convert DTO to entity
         Purchase purchase = convertToEntity(purchaseDto);
+
+        // Save the purchase in the database
         Purchase savedPurchase = purchaseDao.save(purchase);
-        return convertToDto(savedPurchase);
+
+        // Convert the saved purchase entity to a DTO
+        PurchaseDto responseDto = convertToDto(savedPurchase);
+
+        // Replace the price with the calculated total price
+        responseDto.setPrice(savedPurchase.getPrice() * savedPurchase.getQuantity());
+
+        // Log the calculated total price for debugging
+        log.info("Purchase saved with total price: {}", responseDto.getPrice());
+
+        return responseDto; // Return the response with total price as the "price" field
     }
+
 
     public void deletePurchase(UUID id) {
         purchaseDao.deleteById(id);
@@ -62,5 +79,18 @@ public class PurchaseService {
         purchase.setVendorName(dto.getVendorName());
         purchase.setItemName(dto.getItemName());
         return purchase;
+    }
+    public List<String> getVendorNames(){
+    	return vendorFeignClient.getVendorNames();
+    }
+    public List<String> getItemNames() {
+        // Fetch all purchase records from the repository
+        List<Purchase> purchases = purchaseDao.findAll();
+
+        // Extract item names and ensure no duplicates using distinct()
+        return purchases.stream()
+                .map(Purchase::getItemName)
+                .distinct()
+                .collect(Collectors.toList());
     }
 }
