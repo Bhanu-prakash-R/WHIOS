@@ -5,6 +5,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.validation.constraints.Email;
 //import jakarta.validation.constraints.Email;
+/**
+ * Marks a class as embeddable to be used as a component of another entity.
+ * The @Embeddable annotation indicates that the class doesn't have a primary key of its own
+ * and its attributes are mapped to columns of the owning entity's table.
+ */
 @Embeddable
 public class ContactDetails {
     @Column(nullable=false)

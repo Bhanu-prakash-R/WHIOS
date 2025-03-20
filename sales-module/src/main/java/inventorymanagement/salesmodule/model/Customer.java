@@ -4,12 +4,18 @@ package inventorymanagement.salesmodule.model;
 
 import java.util.List;
 
+
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+/**
+ * Entity class representing a Customer in the system.
+ * Maps to a database table for storing customer-related information.
+ * Includes embedded contact details and a one-to-many relationship with sales records.
+ */
 @Entity
 public class Customer {
 	@Id

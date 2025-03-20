@@ -17,6 +17,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Service class for managing vendor-related operations.
+ * Provides business logic for creating, updating, deleting, fetching, and searching vendors.
+ * Uses VendorDao for database interactions.
+ */
 @Service
 public class VendorService {
 
@@ -25,6 +30,11 @@ public class VendorService {
     @Autowired
     private VendorDao vendorRepository;
 
+    /**
+     * Fetches all vendors from the database.
+     *
+     * @return A list of VendorResponseDto representing all vendors.
+     */
     public List<VendorResponseDto> getAllVendors() {
         logger.info("Fetching all vendors");
         try {
@@ -45,6 +55,13 @@ public class VendorService {
         }
     }
 
+    /**
+     * Fetches a specific vendor by ID.
+     *
+     * @param id The UUID of the vendor.
+     * @return A VendorResponseDto representing the vendor.
+     * @throws VendorNotFoundException if the vendor with the given ID is not found.
+     */
     public VendorResponseDto getVendorById(UUID id) {
         logger.info("Fetching vendor with ID: {}", id);
         try {
@@ -59,15 +76,19 @@ public class VendorService {
                             vendor.getContactDetails().getAddress()
                     )
             );
-        } catch (VendorNotFoundException e) {
-            logger.error("Vendor not found with ID: {}", id, e);
-            throw e;
         } catch (Exception e) {
             logger.error("Error fetching vendor by ID: {}", id, e);
             throw new RuntimeException("Unable to fetch vendor by ID", e);
         }
     }
 
+    /**
+     * Saves a new vendor to the database.
+     *
+     * @param vendorRequestDto The vendor details to be saved.
+     * @return A VendorResponseDto representing the saved vendor.
+     * @throws InvalidVendorRequestException if validation fails for the vendor data.
+     */
     public VendorResponseDto saveVendor(VendorRequestDto vendorRequestDto) {
         logger.info("Saving vendor: {}", vendorRequestDto.getVendorName());
         try {
@@ -91,15 +112,21 @@ public class VendorService {
                             savedVendor.getContactDetails().getAddress()
                     )
             );
-        } catch (InvalidVendorRequestException e) {
-            logger.error("Invalid vendor request: {}", e.getMessage(), e);
-            throw e;
         } catch (Exception e) {
             logger.error("Error saving vendor: {}", e.getMessage(), e);
             throw new RuntimeException("Unable to save vendor", e);
         }
     }
 
+    /**
+     * Updates an existing vendor in the database.
+     *
+     * @param id The UUID of the vendor to update.
+     * @param vendorRequestDto The updated vendor details.
+     * @return A VendorResponseDto representing the updated vendor.
+     * @throws VendorNotFoundException if the vendor with the given ID is not found.
+     * @throws InvalidVendorRequestException if validation fails for the vendor data.
+     */
     public VendorResponseDto updateVendor(UUID id, VendorRequestDto vendorRequestDto) {
         logger.info("Updating vendor with ID: {}", id);
         try {
@@ -126,37 +153,41 @@ public class VendorService {
                             updatedVendor.getContactDetails().getAddress()
                     )
             );
-        } catch (VendorNotFoundException e) {
-            logger.error("Vendor not found with ID: {}", id, e);
-            throw e;
-        } catch (InvalidVendorRequestException e) {
-            logger.error("Invalid vendor request: {}", e.getMessage(), e);
-            throw e;
         } catch (Exception e) {
             logger.error("Error updating vendor: {}", e.getMessage(), e);
             throw new RuntimeException("Unable to update vendor", e);
         }
     }
 
+    /**
+     * Deletes a vendor by ID.
+     *
+     * @param id The UUID of the vendor to delete.
+     * @throws VendorNotFoundException if the vendor with the given ID is not found.
+     */
     public void deleteVendor(UUID id) {
         logger.info("Deleting vendor with ID: {}", id);
         try {
             Vendor vendor = vendorRepository.findById(id)
                     .orElseThrow(() -> new VendorNotFoundException("Vendor not found with id: " + id));
             vendorRepository.delete(vendor);
-        } catch (VendorNotFoundException e) {
-            logger.error("Vendor not found with ID: {}", id, e);
-            throw e;
         } catch (Exception e) {
             logger.error("Error deleting vendor with ID: {}", id, e);
             throw new RuntimeException("Unable to delete vendor", e);
         }
     }
 
+    /**
+     * Searches for vendors by name.
+     *
+     * @param vendorName The name keyword to search for.
+     * @return A list of VendorResponseDto representing matching vendors.
+     * @throws VendorNotFoundException if no matching vendors are found.
+     */
     public List<VendorResponseDto> searchVendorsByName(String vendorName) {
         logger.info("Searching vendors by name: {}", vendorName);
         try {
-            List<Vendor> vendors = vendorRepository.findByVendorNameContaining(vendorName); // Updated method call
+            List<Vendor> vendors = vendorRepository.findByVendorNameContaining(vendorName);
             if (vendors.isEmpty()) {
                 throw new VendorNotFoundException("No vendors found with name containing: " + vendorName);
             }
@@ -170,22 +201,30 @@ public class VendorService {
                                     vendor.getContactDetails().getAddress()
                             )
                     )).collect(Collectors.toList());
-        } catch (VendorNotFoundException e) {
-            logger.error("No vendors found with name containing: {}", vendorName, e);
-            throw e;
         } catch (Exception e) {
             logger.error("Error searching vendors by name: {}", vendorName, e);
             throw new RuntimeException("Unable to search vendors", e);
         }
     }
 
+    /**
+     * Fetches the names of all vendors.
+     *
+     * @return A list of strings containing vendor names.
+     */
     public List<String> getAllVendorNames() {
         logger.info("Fetching all vendor names");
         return vendorRepository.findAll().stream()
-                .map(Vendor::getVendorName)  // Use method reference to get vendorName
+                .map(Vendor::getVendorName)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Validates the VendorRequestDto to ensure it meets the requirements.
+     *
+     * @param vendorRequestDto The vendor data to validate.
+     * @throws InvalidVendorRequestException if validation fails.
+     */
     private void validateVendor(VendorRequestDto vendorRequestDto) {
         if (vendorRequestDto.getVendorName() == null || vendorRequestDto.getVendorName().isEmpty()) {
             throw new InvalidVendorRequestException("Vendor name is required");

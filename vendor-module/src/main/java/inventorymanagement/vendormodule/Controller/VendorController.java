@@ -6,6 +6,7 @@ import inventorymanagement.vendormodule.Dto.VendorRequestDto;
 import inventorymanagement.vendormodule.Dto.VendorResponseDto;
 import inventorymanagement.vendormodule.Service.VendorService;
 import inventorymanagement.vendormodule.exception.VendorNotFoundException;
+import inventorymanagement.vendormodule.response.ApiResponse;
 import jakarta.validation.Valid;
 import inventorymanagement.vendormodule.exception.InvalidVendorRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,105 +30,143 @@ public class VendorController {
     @Autowired
     private VendorService vendorService;
 
-    // Get all vendors
+    /**
+     * Get all vendors.
+     *
+     * @return ApiResponse containing the list of all vendors.
+     */
     @GetMapping
-    public ResponseEntity<List<VendorResponseDto>> getAllVendors() {
-        try {
-            List<VendorResponseDto> vendors = vendorService.getAllVendors();
-            return new ResponseEntity<>(vendors, HttpStatus.OK);
-        } catch (Exception e) {
-            logger.error("Error fetching vendors: ", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to fetch vendors", e);
-        }
+    public ResponseEntity<ApiResponse<List<VendorResponseDto>>> getAllVendors() {
+        logger.info("Fetching all vendors");
+        List<VendorResponseDto> vendors = vendorService.getAllVendors();
+        return ResponseEntity.ok(
+            new ApiResponse<>(
+                true, 
+                "Vendors retrieved successfully", 
+                vendors, 
+                HttpStatus.OK.value(), 
+                LocalDateTime.now()
+            )
+        );
     }
-    
-    // Get vendor names
+
+    /**
+     * Get names of all vendors.
+     *
+     * @return ApiResponse containing the list of vendor names.
+     */
     @GetMapping("/names")
     public ResponseEntity<List<String>> getVendorNames() {
-        try {
-            List<String> vendorNames = vendorService.getAllVendorNames();
-            return ResponseEntity.ok(vendorNames);
-        } catch (Exception e) {
-            logger.error("Error fetching vendor names: ", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        logger.info("Fetching all vendor names");
+        List<String> vendorNames = vendorService.getAllVendorNames();
+        return ResponseEntity.ok(vendorNames
+            
+        );
     }
 
-    // Get a vendor by ID
+    /**
+     * Get a vendor by ID.
+     *
+     * @param id The vendor's unique identifier.
+     * @return ApiResponse containing the vendor details.
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<VendorResponseDto> getVendorById(@PathVariable UUID id) {
-        try {
-            VendorResponseDto vendor = vendorService.getVendorById(id);
-            return new ResponseEntity<>(vendor, HttpStatus.OK);
-        } catch (VendorNotFoundException e) {
-            logger.error("Vendor not found with id: " + id, e);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-        } catch (Exception e) {
-            logger.error("Error fetching vendor by id: ", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to fetch vendor by id", e);
-        }
+    public ResponseEntity<ApiResponse<VendorResponseDto>> getVendorById(@PathVariable UUID id) {
+        logger.info("Fetching vendor with ID: {}", id);
+        VendorResponseDto vendor = vendorService.getVendorById(id);
+        return ResponseEntity.ok(
+            new ApiResponse<>(
+                true, 
+                "Vendor retrieved successfully", 
+                vendor, 
+                HttpStatus.OK.value(), 
+                LocalDateTime.now()
+            )
+        );
     }
 
-    // Create a new vendor
+    /**
+     * Create a new vendor.
+     *
+     * @param vendorRequestDto The details of the vendor to create.
+     * @return ApiResponse containing the created vendor details.
+     */
     @PostMapping
-    public ResponseEntity<VendorResponseDto> createVendor( @Valid @RequestBody VendorRequestDto vendorRequestDto) {
-        try {
-            VendorResponseDto newVendor = vendorService.saveVendor(vendorRequestDto);
-            return new ResponseEntity<>(newVendor, HttpStatus.CREATED);
-        } catch (InvalidVendorRequestException e) {
-            logger.error("Invalid vendor request: ", e);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-        } catch (Exception e) {
-            logger.error("Error creating vendor: ", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create vendor", e);
-        }
+    public ResponseEntity<ApiResponse<VendorResponseDto>> createVendor(@Valid @RequestBody VendorRequestDto vendorRequestDto) {
+        logger.info("Creating a new vendor");
+        VendorResponseDto newVendor = vendorService.saveVendor(vendorRequestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            new ApiResponse<>(
+                true, 
+                "Vendor created successfully", 
+                newVendor, 
+                HttpStatus.CREATED.value(), 
+                LocalDateTime.now()
+            )
+        );
     }
 
-    // Update a vendor
+    /**
+     * Update an existing vendor.
+     *
+     * @param id               The vendor's unique identifier.
+     * @param vendorRequestDto The updated vendor details.
+     * @return ApiResponse containing the updated vendor details.
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<VendorResponseDto> updateVendor(@PathVariable UUID id, @RequestBody VendorRequestDto vendorRequestDto) {
-        try {
-            VendorResponseDto updatedVendor = vendorService.updateVendor(id, vendorRequestDto);
-            return new ResponseEntity<>(updatedVendor, HttpStatus.OK);
-        } catch (VendorNotFoundException e) {
-            logger.error("Vendor not found with id: " + id, e);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-        } catch (InvalidVendorRequestException e) {
-            logger.error("Invalid vendor request: ", e);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-        } catch (Exception e) {
-            logger.error("Error updating vendor: ", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to update vendor", e);
-        }
+    public ResponseEntity<ApiResponse<VendorResponseDto>> updateVendor(@PathVariable UUID id, @Valid @RequestBody VendorRequestDto vendorRequestDto) {
+        logger.info("Updating vendor with ID: {}", id);
+        VendorResponseDto updatedVendor = vendorService.updateVendor(id, vendorRequestDto);
+        return ResponseEntity.ok(
+            new ApiResponse<>(
+                true, 
+                "Vendor updated successfully", 
+                updatedVendor, 
+                HttpStatus.OK.value(), 
+                LocalDateTime.now()
+            )
+        );
     }
 
-    // Delete a vendor
+    /**
+     * Delete a vendor.
+     *
+     * @param id The vendor's unique identifier.
+     * @return ApiResponse confirming vendor deletion.
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVendor(@PathVariable UUID id) {
-        try {
-            vendorService.deleteVendor(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } catch (VendorNotFoundException e) {
-            logger.error("Vendor not found with id: " + id, e);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-        } catch (Exception e) {
-            logger.error("Error deleting vendor: ", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to delete vendor", e);
-        }
+    public ResponseEntity<ApiResponse<Void>> deleteVendor(@PathVariable UUID id) {
+        logger.info("Deleting vendor with ID: {}", id);
+        vendorService.deleteVendor(id);
+        return ResponseEntity.ok(
+            new ApiResponse<>(
+                true, 
+                "Vendor deleted successfully", 
+                null, 
+                HttpStatus.OK.value(), 
+                LocalDateTime.now()
+            )
+        );
     }
 
-    // Search vendors by name
+    /**
+     * Search vendors by name.
+     *
+     * @param vendorName The name to search for.
+     * @return ApiResponse containing the list of vendors matching the name.
+     */
     @GetMapping("/search/{vendorName}")
-    public ResponseEntity<List<VendorResponseDto>> searchVendorsByName(@PathVariable String vendorName) {
-        try {
-            List<VendorResponseDto> vendors = vendorService.searchVendorsByName(vendorName);
-            return new ResponseEntity<>(vendors, HttpStatus.OK);
-        } catch (VendorNotFoundException e) {
-            logger.error("No vendors found with name containing: " + vendorName, e);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
-        } catch (Exception e) {
-            logger.error("Error searching vendors by name: ", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to search vendors by name", e);
-        }
+    public ResponseEntity<ApiResponse<List<VendorResponseDto>>> searchVendorsByName(@PathVariable String vendorName) {
+        logger.info("Searching vendors by name: {}", vendorName);
+        List<VendorResponseDto> vendors = vendorService.searchVendorsByName(vendorName);
+        return ResponseEntity.ok(
+            new ApiResponse<>(
+                true, 
+                "Vendors retrieved successfully", 
+                vendors, 
+                HttpStatus.OK.value(), 
+                LocalDateTime.now()
+            )
+        );
     }
 }

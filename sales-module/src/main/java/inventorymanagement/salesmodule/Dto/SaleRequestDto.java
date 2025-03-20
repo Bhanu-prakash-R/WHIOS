@@ -1,19 +1,60 @@
 package inventorymanagement.salesmodule.Dto;
 
-public class SaleRequestDto {
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import lombok.NonNull;
 
+
+/**
+ * Data Transfer Object (DTO) for handling sale creation requests.
+ * Includes fields for customer details (name, phone, email, address) and sale-specific information
+ * (customer ID, item name, quantity, price).
+ */
+public class SaleRequestDto {
+	@NotBlank(message = "Customer name cannot be blank")
+	@NonNull
     private String customerName;
+    
+	@NotBlank(message = "Customer phone cannot be blank")
+    @NonNull
+	@Size(min = 10, max = 15, message = "Customer phone must be between 10 and 15 characters")
     private String customerPhone;
+    
+	 @NotBlank(message = "Customer email cannot be blank")
+	 @Email(message = "Customer email should be valid")
+	 @NonNull
     private String customerEmail;
+    
+	 @NonNull
+	 @NotBlank(message = "Customer address cannot be blank")
+	 @Size(max = 255, message = "Customer address must not exceed 255 characters")
     private String customerAddress;
     
+	 
     
-    private String customerId;
+	 @NotBlank(message = "Item name cannot be blank")
+	 @NonNull 
     private String itemName;
-    private int quantity;
+    
+	 @NotNull(message = "Quantity cannot be null")
+	 @Min(value =0 , message = "Quantity must be at least 0") 
+	 @NonNull
+    private Integer quantity;
+    
+	 
+	 
+	 @NonNull
+	 @Positive(message="Price must be positive")
+	/* @NonNull*/
     private double price;
 
-    // Getters and Setters
+    /**
+     * Getters and Setters
+     */
     public String getCustomerName() {
         return customerName;
     }

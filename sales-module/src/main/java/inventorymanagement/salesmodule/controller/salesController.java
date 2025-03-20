@@ -9,12 +9,18 @@ import org.slf4j.LoggerFactory;
 import inventorymanagement.salesmodule.Service.saleService;
 import inventorymanagement.salesmodule.Dto.SaleRequestDto;
 import inventorymanagement.salesmodule.Dto.SaleResponseDto;
+import inventorymanagement.salesmodule.Dto.SalesMetricsDto;
 import inventorymanagement.salesmodule.exception.SaleNotFoundException;
+import inventorymanagement.salesmodule.response.ApiResponse;
 import jakarta.validation.Valid;
 import inventorymanagement.salesmodule.exception.CustomerNotFoundException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * REST controller for handling sales-related API endpoints.
+ */
 @RestController
 @RequestMapping("/api/sales")
 public class salesController {
@@ -24,121 +30,170 @@ public class salesController {
     @Autowired
     private saleService salesService;
 
-    // Get all sales
+    /**
+     * Retrieves all sales records.
+     *
+     * @return ResponseEntity containing the ApiResponse with the list of sales records.
+     */
     @GetMapping
-    public ResponseEntity<List<SaleResponseDto>> getAllSales() {
-        try {
-            logger.info("Fetching all sales");
-            List<SaleResponseDto> sales = salesService.getAllSales();
-            return ResponseEntity.ok(sales);
-        } catch (Exception e) {
-            logger.error("Error fetching all sales", e);
-            throw new RuntimeException("Unable to fetch sales", e);
-        }
+    public ResponseEntity<ApiResponse<List<SaleResponseDto>>> getAllSales() {
+        logger.info("Fetching all sales");
+        List<SaleResponseDto> sales = salesService.getAllSales();
+        ApiResponse<List<SaleResponseDto>> response = new ApiResponse<>(
+            true,
+            "Sales records retrieved successfully.",
+            sales,
+            200,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.ok(response);
     }
 
-    // Get a single sale by ID
+    /**
+     * Retrieves a sale record by its ID.
+     *
+     * @param id The ID of the sale to fetch.
+     * @return ResponseEntity containing the ApiResponse with sale details.
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<SaleResponseDto> getSaleById(@PathVariable Long id) {
-        try {
-            logger.info("Fetching sale with ID: {}", id);
-            SaleResponseDto sale = salesService.getSaleById(id);
-            return ResponseEntity.ok(sale);
-        } catch (SaleNotFoundException e) {
-            logger.error("Sale not found with ID: {}", id, e);
-            throw e;
-        } catch (Exception e) {
-            logger.error("Error fetching sale with ID: {}", id, e);
-            throw new RuntimeException("Unable to fetch sale by ID", e);
-        }
+    public ResponseEntity<ApiResponse<SaleResponseDto>> getSaleById(@PathVariable Long id) {
+        logger.info("Fetching sale with ID: {}", id);
+        SaleResponseDto sale = salesService.getSaleById(id);
+        ApiResponse<SaleResponseDto> response = new ApiResponse<>(
+            true,
+            "Sale record retrieved successfully.",
+            sale,
+            200,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.ok(response);
     }
 
-    // Create a new sale
+    /**
+     * Creates a new sale record.
+     *
+     * @param saleRequestDto The request body containing sale details.
+     * @return ResponseEntity containing the ApiResponse with the created sale record.
+     */
     @PostMapping
-    public ResponseEntity<SaleResponseDto> createSale( @Valid @RequestBody SaleRequestDto saleRequestDto) {
-        try {
-            logger.info("Creating a new sale");
-            SaleResponseDto newSale = salesService.createSale(saleRequestDto);
-            return ResponseEntity.status(201).body(newSale);
-        } catch (CustomerNotFoundException e) {
-            logger.error("Customer not found while creating sale", e);
-            throw e;
-        } catch (Exception e) {
-            logger.error("Error creating sale", e);
-            throw new RuntimeException("Unable to create sale", e);
-        }
+    public ResponseEntity<ApiResponse<SaleResponseDto>> createSale(@Valid @RequestBody SaleRequestDto saleRequestDto) {
+        logger.info("Creating a new sale");
+        SaleResponseDto newSale = salesService.createSale(saleRequestDto);
+        ApiResponse<SaleResponseDto> response = new ApiResponse<>(
+            true,
+            "Sale record created successfully.",
+            newSale,
+            201,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(201).body(response);
     }
 
-    // Update a sale by ID
+    /**
+     * Updates a sale record by its ID.
+     *
+     * @param id             The ID of the sale to update.
+     * @param saleRequestDto The request body containing updated sale details.
+     * @return ResponseEntity containing the ApiResponse with the updated sale record.
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<SaleResponseDto> updateSale(@PathVariable Long id, @RequestBody SaleRequestDto saleRequestDto) {
-        try {
-            logger.info("Updating sale with ID: {}", id);
-            SaleResponseDto updatedSale = salesService.updateSale(id, saleRequestDto);
-            return ResponseEntity.ok(updatedSale);
-        } catch (SaleNotFoundException | CustomerNotFoundException e) {
-            logger.error("Error updating sale with ID: {}", id, e);
-            throw e;
-        } catch (Exception e) {
-            logger.error("Error updating sale with ID: {}", id, e);
-            throw new RuntimeException("Unable to update sale", e);
-        }
+    public ResponseEntity<ApiResponse<SaleResponseDto>> updateSale(
+            @PathVariable Long id,
+            @Valid @RequestBody SaleRequestDto saleRequestDto) {
+        logger.info("Updating sale with ID: {}", id);
+        SaleResponseDto updatedSale = salesService.updateSale(id, saleRequestDto);
+        ApiResponse<SaleResponseDto> response = new ApiResponse<>(
+            true,
+            "Sale record updated successfully.",
+            updatedSale,
+            200,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.ok(response);
     }
 
-    // Get all sales associated with a specific customer
+    /**
+     * Retrieves sales records for a specific customer by their ID.
+     *
+     * @param customerId The ID of the customer.
+     * @return ResponseEntity containing the ApiResponse with the list of sales for the customer.
+     */
     @GetMapping("/customer/{customerId}")
-    public ResponseEntity<List<SaleResponseDto>> getSalesByCustomer(@PathVariable Long customerId) {
-        try {
-            logger.info("Fetching sales for customer with ID: {}", customerId);
-            List<SaleResponseDto> sales = salesService.getSalesByCustomer(customerId);
-            return ResponseEntity.ok(sales);
-        } catch (CustomerNotFoundException e) {
-            logger.error("Customer not found with ID: {}", customerId, e);
-            throw e;
-        } catch (Exception e) {
-            logger.error("Error fetching sales for customer with ID: {}", customerId, e);
-            throw new RuntimeException("Unable to fetch sales for customer", e);
-        }
-    }
-    
-    @GetMapping("/stock-item-names")
-    public ResponseEntity<List<String>> getStockItemNames() {
-        List<String> itemNames = salesService.getStockItemNames();
-        return ResponseEntity.ok(itemNames);
+    public ResponseEntity<ApiResponse<List<SaleResponseDto>>> getSalesByCustomer(@PathVariable Long customerId) {
+        logger.info("Fetching sales for customer with ID: {}", customerId);
+        List<SaleResponseDto> sales = salesService.getSalesByCustomer(customerId);
+        ApiResponse<List<SaleResponseDto>> response = new ApiResponse<>(
+            true,
+            "Sales records for customer retrieved successfully.",
+            sales,
+            200,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.ok(response);
     }
 
-    // Delete a sale by ID
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSale(@PathVariable Long id) {
-        try {
-            logger.info("Deleting sale with ID: {}", id);
-            salesService.deleteSale(id);
-            return ResponseEntity.noContent().build();
-        } catch (SaleNotFoundException e) {
-            logger.error("Sale not found with ID: {}", id, e);
-            throw e;
-        } catch (Exception e) {
-            logger.error("Error deleting sale with ID: {}", id, e);
-            throw new RuntimeException("Unable to delete sale", e);
-        }
+    /**
+     * Retrieves a list of stock item names.
+     *
+     * @return ResponseEntity containing the ApiResponse with the list of stock item names.
+     */
+    @GetMapping("/stock-item-names")
+    public ResponseEntity<ApiResponse<List<String>>> getStockItemNames() {
+        logger.info("Fetching stock item names");
+        List<String> itemNames = salesService.getStockItemNames();
+        ApiResponse<List<String>> response = new ApiResponse<>(
+            true,
+            "Stock item names retrieved successfully.",
+            itemNames,
+            200,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.ok(response);
     }
-    
+
+    /**
+     * Deletes a sale record by its ID.
+     *
+     * @param id The ID of the sale to delete.
+     * @return ResponseEntity containing the ApiResponse with no data.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteSale(@PathVariable Long id) {
+        logger.info("Deleting sale with ID: {}", id);
+        salesService.deleteSale(id);
+        ApiResponse<Void> response = new ApiResponse<>(
+            true,
+            "Sale record deleted successfully.",
+            null,
+            204,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Retrieves the three most recent sales records.
+     *
+     * @return ResponseEntity containing the ApiResponse with the recent sales records.
+     */
     @GetMapping("/recent")
-    public ResponseEntity<List<Object[]>> getRecentSales() {
+    public ResponseEntity<List<SalesMetricsDto>> getRecentSales() {
         logger.info("Fetching 3 recent sales");
-        List<Object[]> recentSales = salesService.getRecentSales();
+        List<SalesMetricsDto> recentSales = salesService.getRecentSales();
+        
         return ResponseEntity.ok(recentSales);
     }
-    
+
+    /**
+     * Retrieves the total revenue generated for each stock item.
+     *
+     * @return ResponseEntity containing the ApiResponse with the total revenues per item.
+     */
     @GetMapping("/revenues")
     public ResponseEntity<List<Object[]>> getTotalRevenuePerItem() {
         logger.info("Fetching total revenue per item");
         List<Object[]> totalRevenue = salesService.getTotalRevenuePerItem();
+        
         return ResponseEntity.ok(totalRevenue);
     }
-
-
-    
-    
-    
 }

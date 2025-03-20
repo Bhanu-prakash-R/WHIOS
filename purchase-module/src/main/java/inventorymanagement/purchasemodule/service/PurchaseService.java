@@ -1,10 +1,13 @@
 package inventorymanagement.purchasemodule.service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import inventorymanagement.purchasemodule.Client.VendorFeignClient;
 import inventorymanagement.purchasemodule.dao.PurchaseDao;
+import inventorymanagement.purchasemodule.dto.PurchaseDetailsDto;
 import inventorymanagement.purchasemodule.dto.PurchaseDto;
+import inventorymanagement.purchasemodule.dto.PurchaseMetricsDto;
 import inventorymanagement.purchasemodule.entity.Purchase;
 import lombok.extern.slf4j.Slf4j;
 import java.util.List;
@@ -12,6 +15,12 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Pageable;
+
+/**
+ * Service class for managing purchase-related business logic.
+ * Handles operations such as fetching, saving, and deleting purchase records.
+ */
 @Service
 @Slf4j
 public class PurchaseService {
@@ -21,40 +30,80 @@ public class PurchaseService {
     @Autowired
     private VendorFeignClient vendorFeignClient;
 
+    /**
+     * Retrieves all purchases from the database.
+     * 
+     * @return List of PurchaseDto objects representing all purchases.
+     */
     public List<PurchaseDto> getAllPurchases() {
         return purchaseDao.findAll().stream()
                           .map(this::convertToDto)
                           .collect(Collectors.toList());
     }
-
+    
+    /**
+     * Retrieves a specific purchase by its ID.
+     * 
+     * @param id the UUID of the purchase.
+     * @return Optional containing the PurchaseDto if found, otherwise empty.
+     */
     public Optional<PurchaseDto> getPurchaseById(UUID id) {
         return purchaseDao.findById(id).map(this::convertToDto);
     }
-
+    
+    /**
+     * Saves a purchase record to the database.
+     * 
+     * @param purchaseDto the PurchaseDto object containing purchase details.
+     * @return PurchaseDto representing the saved purchase with total price calculated.
+     */
     public PurchaseDto savePurchase(PurchaseDto purchaseDto) {
-        // Convert DTO to entity
+        log.info("Starting the creation of a new purchase for item: {}, vendor: {}", purchaseDto.getItemName(), purchaseDto.getVendorName());
+
+        // Step 1: Fetch the list of valid vendor names from the Vendor module
+        List<String> vendorNames = vendorFeignClient.getVendorNames();
+        log.info("Fetched {} vendor names from the Vendor module.", vendorNames.size());
+
+        // Step 2: Validate the vendorName in the PurchaseDto
+        if (!vendorNames.contains(purchaseDto.getVendorName())) {
+            log.error("Invalid vendorName: {}. Vendor not found in the Vendor module.", purchaseDto.getVendorName());
+            throw new IllegalArgumentException("Vendor '" + purchaseDto.getVendorName() + "' is not a valid vendor.");
+        }
+        log.info("Vendor '{}' is valid. Proceeding with the purchase creation.", purchaseDto.getVendorName());
+
+        // Step 3: Convert DTO to entity
         Purchase purchase = convertToEntity(purchaseDto);
 
-        // Save the purchase in the database
+        // Step 4: Save the purchase in the database
         Purchase savedPurchase = purchaseDao.save(purchase);
 
-        // Convert the saved purchase entity to a DTO
+        // Step 5: Convert the saved purchase entity to a DTO
         PurchaseDto responseDto = convertToDto(savedPurchase);
 
-        // Replace the price with the calculated total price
+        // Step 6: Replace the price with the calculated total price (price * quantity)
         responseDto.setPrice(savedPurchase.getPrice() * savedPurchase.getQuantity());
-
-        // Log the calculated total price for debugging
         log.info("Purchase saved with total price: {}", responseDto.getPrice());
 
-        return responseDto; // Return the response with total price as the "price" field
+        // Step 7: Return the response DTO
+        return responseDto;
     }
 
 
+    /**
+     * Deletes a purchase record by its ID.
+     * 
+     * @param id the UUID of the purchase to delete.
+     */
     public void deletePurchase(UUID id) {
         purchaseDao.deleteById(id);
     }
-
+    
+    /**
+     * Converts a Purchase entity to its corresponding DTO representation.
+     * 
+     * @param purchase the Purchase entity to convert.
+     * @return PurchaseDto object.
+     */
     public PurchaseDto convertToDto(Purchase purchase) {
         PurchaseDto dto = new PurchaseDto();
         dto.setPurchaseId(purchase.getPurchaseId());
@@ -67,7 +116,13 @@ public class PurchaseService {
         dto.setItemName(purchase.getItemName());
         return dto;
     }
-
+    
+    /**
+     * Converts a PurchaseDto object to its corresponding entity representation.
+     * 
+     * @param dto the PurchaseDto to convert.
+     * @return Purchase entity.
+     */
     public Purchase convertToEntity(PurchaseDto dto) {
         Purchase purchase = new Purchase();
         purchase.setPurchaseId(dto.getPurchaseId());
@@ -80,9 +135,21 @@ public class PurchaseService {
         purchase.setItemName(dto.getItemName());
         return purchase;
     }
+    
+    /**
+     * Retrieves the names of all vendors by invoking the vendor module via FeignClient.
+     * 
+     * @return List of vendor names as strings.
+     */
     public List<String> getVendorNames(){
     	return vendorFeignClient.getVendorNames();
     }
+    
+    /**
+     * Retrieves distinct item names from all purchase records.
+     * 
+     * @return List of unique item names as strings.
+     */
     public List<String> getItemNames() {
         // Fetch all purchase records from the repository
         List<Purchase> purchases = purchaseDao.findAll();
@@ -93,4 +160,29 @@ public class PurchaseService {
                 .distinct()
                 .collect(Collectors.toList());
     }
-}
+    
+    /**
+     * Fetches recent purchase metrics with pagination support.
+     * 
+     * @param pageable the Pageable object for pagination configuration.
+     * @return List of PurchaseMetricsDto representing the recent purchases.
+     */
+    public List<PurchaseMetricsDto> getRecentPurchases(Pageable pageable) {
+        // Call the repository method to fetch recent purchases
+        return purchaseDao.findRecentPurchases(pageable);
+    }
+
+public PurchaseDetailsDto getLimitedPurchaseDetailsByItemName(String itemName) {
+    Optional<Purchase> purchase = purchaseDao.findByItemName(itemName);
+    if (purchase.isPresent()) {
+        Purchase p = purchase.get();
+        return new PurchaseDetailsDto(
+            p.getVendorName(),
+            p.getQuantity(),
+            p.getPrice(),
+            p.getCategory()
+        );
+    } else {
+        return null; // Or throw an exception if preferred
+    }
+}}

@@ -10,16 +10,30 @@ import org.hibernate.annotations.UpdateTimestamp;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+/**
+ * Entity class for mapping to the "stock_management" table in the database.
+ * Uses Lombok to reduce boilerplate with @Data for getters and setters 
+ * and @NoArgsConstructor for a no-argument constructor.
+ */
 @Entity
 @Data
-@Table(name = "stock_management")
+@Table(name="stock_management")
 @NoArgsConstructor
+/**
+ * Entity class representing stocks in the "stock_management" table.
+ * The stockId is a unique identifier for each stock, mapped to the "stock_id" column.
+ */
 public class Stocks {
     @Id
     @Column(name="stock_id")
     private UUID stockId;
 
+    /**
+     * Represents stock details with database mappings and constraints.
+     * Fields include item name, quantity, category, price, zone, and vendor details.
+     * Ensures data integrity with annotations like @Column for nullability and uniqueness.
+     */
+    
     @Column(name = "name", nullable = false, unique = true)
     private String itemName;
 
@@ -42,6 +56,13 @@ public class Stocks {
     @Column(nullable = false)
     private String vendorName;
 
+    /**
+     * Tracks the creation and update timestamps for the stock record.
+     * - @CreationTimestamp: Automatically sets the creation time and is non-updatable.
+     * - @UpdateTimestamp: Automatically updates the timestamp on any modification.
+     *
+     * Also includes a purchase ID field for associating stock with a specific purchase.
+     */
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
