@@ -5,6 +5,9 @@ import java.util.List;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import inventorymanagement.stockmodule.dto.PurchaseDetailsDto;
 
 /**
  * Feign client interface to interact with the "purchase-module" service.
@@ -23,6 +26,9 @@ public interface PurchaseFeignClient {
      */
 	@GetMapping("/api/purchases/itemNames")
 	List<String> getItemNames();
+	
+	@GetMapping("api/purchases/autofill/{itemName}")
+    PurchaseDetailsDto getLimitedPurchaseDetails(@PathVariable("itemName") String itemName);
 	
 
 }

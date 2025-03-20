@@ -1,6 +1,7 @@
 package inventorymanagement.purchasemodule.dao;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Pageable;
@@ -36,7 +37,7 @@ public interface PurchaseDao extends JpaRepository<Purchase, UUID> {
      * @param itemName The name of the item.
      * @return A list of Purchase entities associated with the specified item name.
      */
-    List<Purchase> findByItemName(String itemName);
+    Optional<Purchase> findByItemName(String itemName);
 
     /**
      * Finds purchases by category.

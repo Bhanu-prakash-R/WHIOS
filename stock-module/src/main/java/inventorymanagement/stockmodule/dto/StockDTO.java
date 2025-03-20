@@ -1,88 +1,74 @@
 package inventorymanagement.stockmodule.dto;
 
 import java.time.LocalDateTime;
-
-
 import java.util.List;
 import java.util.UUID;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.NonNull;
+
 /**
- * Lombok annotations to reduce boilerplate code.
- *
- * - @Data: Generates getters, setters, toString, equals, and hashCode methods.
- * - @AllArgsConstructor: Generates a constructor with arguments for all fields.
+ * DTO for stock details with validation.
+ * Fields are validated to ensure data integrity.
  */
 @Data
 @NoArgsConstructor
-/**
- * DTO for stock details with validation.
- */
 public class StockDTO {
+
     private UUID stockId;
+
     /**
      * Includes validation to ensure itemName is not null or blank.
+     * This field is mandatory and must be provided by the client.
      */
-    @NonNull
     @NotBlank(message = "Item name cannot be blank")
     private String itemName;
-    
+
     /**
-     * Quantity of the stock item. 
-     * Must not be negative and is validated to ensure it's at least 0.
+     * Quantity of the stock item.
+     * Optional: Can be autofilled from the Purchase Module if missing or zero.
      */
-    @NonNull
     @Min(value = 0, message = "Quantity must be at least 0")
     private int quantity;
 
     /**
-     * Category of the stock item. 
-     * Must not be null or blank, ensuring meaningful input.
+     * Category of the stock item.
+     * Optional: Can be autofilled from the Purchase Module if missing.
      */
-    @NonNull
-    @NotBlank(message = "Category cannot be blank")
     private String category;
 
     /**
-     * Price of the stock item. 
-     * Must be positive and cannot be null to ensure valid pricing.
+     * Price of the stock item.
+     * Optional: Must be positive if provided but can be autofilled if missing.
      */
-    @NonNull
-    @Positive(message = "Price must be positive")
+    @Min(value = 0, message = "Price must be at least 0")
     private double price;
-
     /**
      * Zone name where the stock is located.
-     * Must not be null or blank to ensure accurate location information.
+     * Mandatory for accurate location information.
      */
-    @NonNull
     @NotBlank(message = "Zone name cannot be blank")
     private String zoneName;
 
     /**
      * Vendor name associated with the stock item.
-     * Must not be null or blank to ensure vendor identification.
+     * Optional: Can be autofilled from the Purchase Module if missing.
      */
-    @NonNull
-    @NotBlank(message = "Vendor name cannot be blank")
     private String vendorName;
 
     /**
-     * DTO for representing stock details with validation constraints.
-     * Contains fields like stock ID, item name, quantity, category, price, 
-     * zone name, vendor name, notifications, and creation timestamp.
-     * Ensures data integrity with validation annotations such as @NotBlank and @Positive.
-     * Includes constructors for full and partial initialization.
+     * Notification messages associated with the stock item.
      */
     private List<String> notificationMessages;
 
+    /**
+     * Timestamp when the stock entry was created.
+     */
     private LocalDateTime createdAt;
 
+    // Full constructor
     public StockDTO(UUID stockId, String itemName, int quantity, String category, double price, String zoneName, String vendorName, List<String> notificationMessages, LocalDateTime createdAt) {
         this.stockId = stockId;
         this.itemName = itemName;
@@ -94,6 +80,8 @@ public class StockDTO {
         this.notificationMessages = notificationMessages;
         this.createdAt = createdAt;
     }
+
+    // Constructor for itemName and quantity only
     public StockDTO(String itemName, int quantity) {
         this.itemName = itemName;
         this.quantity = quantity;

@@ -11,6 +11,7 @@ import inventorymanagement.stockmodule.Client.VendorFeignClient;
 import inventorymanagement.stockmodule.Client.ZoneFeignClient;
 import inventorymanagement.stockmodule.dao.NotificationRepository;
 import inventorymanagement.stockmodule.dto.ItemNameQuantityDto;
+import inventorymanagement.stockmodule.dto.PurchaseDetailsDto;
 import inventorymanagement.stockmodule.dto.StockDTO;
 import inventorymanagement.stockmodule.entity.Notification;
 import inventorymanagement.stockmodule.entity.Stocks;
@@ -118,16 +119,54 @@ public class StocksService {
      */
     @Transactional
     public StockDTO createStock(StockDTO stockDTO) {
-        log.info("Creating or updating stock with itemName: {}", stockDTO.getItemName());
+        log.info("Creating or updating stock for itemName: {}, zoneName: {}", stockDTO.getItemName(), stockDTO.getZoneName());
 
-        // Validate if the item exists in the Purchase module
+        // Step 1: Validate if the item exists in the Purchase module
+        log.info("Validating if item '{}' exists in Purchase module...", stockDTO.getItemName());
         List<String> purchasedItemNames = purchaseFeignClient.getItemNames();
+
         if (!purchasedItemNames.contains(stockDTO.getItemName())) {
-            log.error("Item '{}' not found in purchases. Cannot add to stock.", stockDTO.getItemName());
-            throw new IllegalArgumentException("Item not found in purchases. Cannot add to stock.");
+            log.error("Item '{}' not found in Purchase module. Cannot add to stock.", stockDTO.getItemName());
+            throw new IllegalArgumentException("Item not found in Purchase module: " + stockDTO.getItemName());
+        }
+        log.info("Item '{}' is valid. Proceeding with autofill...", stockDTO.getItemName());
+
+        // Step 2: Fetch purchase details for autofill
+       PurchaseDetailsDto purchaseDetails;
+        try {
+            log.info("Fetching purchase details for itemName: {}", stockDTO.getItemName());
+            purchaseDetails = purchaseFeignClient.getLimitedPurchaseDetails(stockDTO.getItemName());
+            if (purchaseDetails == null) {
+                log.error("No purchase details found for itemName: {}", stockDTO.getItemName());
+                throw new IllegalArgumentException("Purchase details not available for the given item name.");
+            }
+        } catch (Exception e) {
+            log.error("Item '{}' not found in Purchase module while fetching details.", stockDTO.getItemName());
+            throw new IllegalArgumentException("Purchase details not found for itemName: " + stockDTO.getItemName());
         }
 
-        // Check if the item already exists in stock
+        // Step 3: Autofill stockDTO fields with data from the Purchase module
+        log.info("Autofilling stock details for itemName: {}", stockDTO.getItemName());
+        if (stockDTO.getVendorName() == null || stockDTO.getVendorName().isEmpty()) {
+            stockDTO.setVendorName(purchaseDetails.getVendorName());
+        }
+        if (stockDTO.getQuantity() == 0) {
+            stockDTO.setQuantity(purchaseDetails.getQuantity());
+        }
+        if (stockDTO.getPrice() == 0) {
+            stockDTO.setPrice(purchaseDetails.getPrice());
+        }
+        if (stockDTO.getCategory() == null || stockDTO.getCategory().isEmpty()) {
+            stockDTO.setCategory(purchaseDetails.getCategory());
+        }
+
+        if (stockDTO.getPrice() <= 0) {
+            log.error("Invalid price for item '{}'. Price must be positive after autofill.", stockDTO.getItemName());
+            throw new IllegalArgumentException("Price must be positive after autofill.");
+        }
+
+        // Step 4: Check if the item already exists in stock
+        log.info("Checking if item '{}' already exists in stock...", stockDTO.getItemName());
         Optional<Stocks> existingStock = stockRepository.findByItemName(stockDTO.getItemName());
 
         Stocks stock;
@@ -142,16 +181,17 @@ public class StocksService {
             log.info("New stock entry created for itemName: {} with quantity: {}", stock.getItemName(), stock.getQuantity());
         }
 
-        // Save the stock and flush to ensure persistence
+        // Step 5: Save the stock and flush to ensure persistence
+        log.info("Saving stock entry for itemName: {}", stockDTO.getItemName());
         stock = stockRepository.saveAndFlush(stock);
 
-        // Convert the stock entity to a DTO
+        // Step 6: Convert the stock entity to a DTO for response
         StockDTO responseDTO = convertToDTO(stock);
 
-        // Replace the price field with the total price (price * quantity)
+        // Calculate and set the total price (price * quantity)
         responseDTO.setPrice(stock.getPrice() * stock.getQuantity());
+        log.info("Stock created/updated successfully for itemName: {} with total price: {}", stockDTO.getItemName(), responseDTO.getPrice());
 
-        log.info("Created or updated stock with total price: {}", responseDTO.getPrice());
         return responseDTO;
     }
 
