@@ -10,8 +10,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.performancemetrics.Client.PurchaseFeignClient;
 import com.example.performancemetrics.Client.SalesFeignClient;
 import com.example.performancemetrics.Client.StockFeignClient;
+import com.example.performancemetrics.Dto.PerformanceItemDto;
+import com.example.performancemetrics.Dto.PerformancePurchaseDto;
+import com.example.performancemetrics.Dto.PerformanceSalesDto;
 
 @Service
 public class MetricsService {
@@ -23,26 +27,37 @@ public class MetricsService {
     
     @Autowired
     private StockFeignClient stockFeignClient;
+    
+    @Autowired
+    private PurchaseFeignClient purchaseFeignClient;
 
-    public List<Map<String, Object>> getStockMetrics() {
-        List<Object[]> results = stockFeignClient.getStockMetrics();
-        
-        // Transform raw Object[] data into a list of maps
+    public List<PerformancePurchaseDto> getRecentPurchases() {
+        // Call the Purchase module's Feign client
+        return purchaseFeignClient.getRecentPurchases(0, 4); // Fetch top 4 recent purchases
+    }
+
+    public List<PerformanceItemDto> getStockMetrics() {
+        logger.info("Calling StockFeignClient to fetch metrics...");
+        List<Map<String, Object>> results = stockFeignClient.getStockMetrics();
+
+        logger.info("Received {} records from Stock module", results.size());
+
+        // Transform the raw data into PerformanceItemDto
         return results.stream()
-                .map(result -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("itemName", result[0]); // Cast itemName to String
-                    map.put("quantity", result[1]); // Cast quantity to an appropriate type
-                    return map;
-                })
+                .map(result -> new PerformanceItemDto(
+                        (String) result.get("itemName"), // Ensure key matches Stock module JSON field
+                        ((Number) result.get("quantity")).intValue() // Convert quantity to int
+                ))
                 .collect(Collectors.toList());
     }
 
+
+
     // Fetch recent sales for the dashboard
-    public List<Object[]> getRecentSalesForDashboard() {
+    public List<PerformanceSalesDto> getRecentSalesForDashboard() {
         logger.info("Entering getRecentSalesForDashboard method");
 
-        List<Object[]> recentSales = null;
+        List<PerformanceSalesDto> recentSales = null;
 
         try {
             recentSales = salesFeignClient.getRecentSales();

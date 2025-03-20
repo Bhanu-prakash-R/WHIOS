@@ -1,6 +1,7 @@
 package inventorymanagement.stockmodule.controller;
 
 import java.util.List;
+
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,15 +26,34 @@ import inventorymanagement.stockmodule.service.StocksService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * REST controller for handling stock-related API endpoints.
+ *
+ * This controller provides APIs under the "/api/stocks" path and uses 
+ * SLF4J logging for managing logs.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/stocks")
+
+/**
+ * Controller class for managing stock-related operations.
+ *
+ * This class acts as the entry point for handling API requests related to stocks.
+ * It utilizes the `StocksService` to execute business logic and interact with the data layer.
+ */
 public class StocksController {
 
     @Autowired
     private StocksService stocksService;
 
     // 1. Create Stock
+    /**
+     * Creates a new stock entry.
+     *
+     * @param stockDTO The stock details to be created.
+     * @return Response with the created stock or error status.
+     */
     @PostMapping("/create")
     public ResponseEntity<StockDTO> createStock(@Valid @RequestBody StockDTO stockDTO) {
         try {
@@ -48,6 +68,11 @@ public class StocksController {
     }
 
     // 2. Display All Stocks
+    /**
+     * Retrieves all stock entries.
+     *
+     * @return Response with the list of stocks or an error status.
+     */
     @GetMapping("/all")
     public ResponseEntity<List<StockDTO>> getAllStocks() {
         try {
@@ -62,6 +87,13 @@ public class StocksController {
     }
 
     // 3. Update Stock
+    /**
+    * Updates a stock.
+    *
+    * @param stockId ID of the stock.
+    * @param stockDTO Updated stock details.
+    * @return HTTP status: 200 (OK), 404 (NOT_FOUND), or 500 (ERROR).
+    */
     @PutMapping("/update/{stockId}")
     public ResponseEntity<Void> updateStock(@PathVariable String stockId,@Valid @RequestBody StockDTO stockDTO) {
         try {
@@ -78,12 +110,22 @@ public class StocksController {
         }
     }
     
+    /**
+     * Retrieves the list of vendor names.
+     *
+     * @return Response containing the list of vendor names with HTTP status 200.
+     */
     @GetMapping("/vendorNames")
     public ResponseEntity<List<String>> getVendorNames(){
     	List<String> vendorNames=stocksService.getVendorNames();
     	return  ResponseEntity.ok(vendorNames);
     }
     
+    /**
+     * Retrieves the list of active zone names.
+     *
+     * @return Response containing the list of active zone names with HTTP status 200.
+     */
     @GetMapping("/ActiveZoneNames")
     public ResponseEntity<List<String>> getActiveZoneNames(){
     	List<String> zoneNames=stocksService.getNamesOfActiveZones();
@@ -94,6 +136,13 @@ public class StocksController {
 
 
     // 4. Remove Stock
+    /**
+     * Removes a specified quantity of a stock item.
+     *
+     * @param stockId ID of the stock item.
+     * @param quantity Quantity to remove.
+     * @return HTTP status: 200 (OK), 404 (NOT_FOUND), 400 (BAD_REQUEST), or 500 (ERROR).
+     */
     @DeleteMapping("/remove/{stockId}/{quantity}")
     public ResponseEntity<Void> removeItem(@PathVariable UUID stockId, @PathVariable int quantity) {
         try {
@@ -114,6 +163,13 @@ public class StocksController {
     }
 
     // 5. Restock Item
+    /**
+     * Restocks a specified quantity of a stock item.
+     *
+     * @param stockId ID of the stock item.
+     * @param quantity Quantity to restock.
+     * @return HTTP status: 200 (OK), 404 (NOT_FOUND), or 500 (ERROR).
+     */
     @PutMapping("/restock/{stockId}/{quantity}")
     public ResponseEntity<Void> restockItem(@PathVariable UUID stockId, @PathVariable int quantity) {
         try {
@@ -149,11 +205,16 @@ public class StocksController {
     }*/
 
     // 7. Scheduler for Low Stock Notification
+    /**
+     * Triggers a manual low stock notification.
+     *
+     * @return HTTP status: 200 (OK) on success or 500 (ERROR) on failure.
+     */
     @GetMapping("/checkLowStock")
     public ResponseEntity<Void> checkAndNotifyLowStock() {
         try {
             log.info("Manually triggering low stock notification");
-            stocksService.checkAndNotifyLowStock();
+            stocksService.scheduledLowStockCheck();
             log.info("Triggered low stock notification");
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (Exception e) {
@@ -161,13 +222,28 @@ public class StocksController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+ 
     
+    /**
+     * Checks the availability of a stock item.
+     *
+     * @param itemName Name of the item to check.
+     * @param quantity Quantity required.
+     * @return Response with true if available, false otherwise.
+     */
     @GetMapping("/check-availability")
     public ResponseEntity<Boolean> checkStockAvailability(@RequestParam String itemName, @RequestParam int quantity) {
         boolean isAvailable = stocksService.checkStockAvailability(itemName, quantity);
         return ResponseEntity.ok(isAvailable);
     }
-
+    
+    /**
+     * Updates the quantity of a stock item.
+     *
+     * @param itemName Name of the stock item.
+     * @param quantity New quantity to update.
+     * @return HTTP status: 204 (NO_CONTENT) on successful update.
+     */
     @PutMapping("/update-quantity")
     public ResponseEntity<Void> updateStockQuantity(@RequestParam String itemName, @RequestParam int quantity) {
         stocksService.updateStockQuantity(itemName, quantity);
@@ -175,6 +251,12 @@ public class StocksController {
     }
 
     // 8. Fetch Only Stock Names
+    /**
+     * Retrieves the names of all stock items.
+     *
+     * @return Response containing a list of stock names with HTTP status 200,
+     *         or HTTP status 500 in case of an error.
+     */
     @GetMapping("/StockItemNames")
     public ResponseEntity<List<String>> getAllStockNames() {
         try {
@@ -187,6 +269,12 @@ public class StocksController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    
+    /**
+     * Retrieves all item names from the purchase module.
+     *
+     * @return Response containing a list of purchase item names with HTTP status 200.
+     */
     @GetMapping("/puchaseItemNames")
     public ResponseEntity<List<String>> getItemNames(){
     	log.info("fetching all itemNames from purchase");
@@ -194,11 +282,22 @@ public class StocksController {
     	return ResponseEntity.ok(purchaseItemNames);
     }
     
+    /**
+     * Retrieves the list of available item names for stock.
+     *
+     * @return Response containing a list of available item names with HTTP status 200.
+     */
     @GetMapping("/available-item-names")
     public ResponseEntity<List<String>> getAvailableItemNamesForStock() {
         List<String> availableItemNames = stocksService.getAvailableItemNamesForStock();
         return ResponseEntity.ok(availableItemNames);
     }
+    
+    /**
+     * Retrieves stock metrics including item names and their quantities.
+     *
+     * @return Response containing a list of item name and quantity details with HTTP status 200.
+     */
     @GetMapping("/metrics")
     public ResponseEntity<List<ItemNameQuantityDto>> getItemNameAndQuantity() {
         log.info("Received request to fetch stock metrics");

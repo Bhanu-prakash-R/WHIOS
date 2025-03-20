@@ -10,18 +10,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Service class for managing operations related to zones.
+ * Provides business logic for creating, updating, deleting, and fetching zones.
+ * Uses ZoneRepository for database interactions and includes logging for debugging and monitoring.
+ */
 @Service
 public class ZoneService {
 
+    // Logger instance for capturing and recording application events
     private static final Logger logger = LoggerFactory.getLogger(ZoneService.class);
 
     @Autowired
     private ZoneRepository zoneRepository;
 
-    // Get all zones
+    /**
+     * Fetches all zones from the database.
+     * 
+     * @return A list of ZoneDTO objects representing all zones.
+     */
     public List<ZoneDTO> getAllZones() {
         logger.info("Entering getAllZones()");
         List<ZoneDTO> zones = zoneRepository.findAll().stream()
@@ -31,7 +40,11 @@ public class ZoneService {
         return zones;
     }
 
-    // Get all active zones
+    /**
+     * Fetches all active zones from the database.
+     * 
+     * @return A list of ZoneDTO objects representing active zones.
+     */
     public List<ZoneDTO> getAllActiveZones() {
         logger.info("Entering getAllActiveZones()");
         List<ZoneDTO> activeZones = zoneRepository.findByIsActiveTrue().stream()
@@ -44,7 +57,12 @@ public class ZoneService {
         return activeZones;
     }
 
-    // Fetch only the names of zones that are active
+    /**
+     * Fetches the names of all active zones.
+     * 
+     * @return A list of Strings representing the names of active zones.
+     * @throws ZoneNotFoundException if no active zones are found.
+     */
     public List<String> getNamesOfActiveZones() {
         logger.info("Entering getNamesOfActiveZones()");
         List<Zone> activeZones = zoneRepository.findByIsActiveTrue();
@@ -59,7 +77,12 @@ public class ZoneService {
         return activeZoneNames;
     }
 
-    // Count the number of active zones
+    /**
+     * Counts the number of active zones.
+     * 
+     * @return A Long value representing the count of active zones.
+     * @throws ZoneNotFoundException if no active zones are found.
+     */
     public Long countActiveZones() {
         logger.info("Entering countActiveZones()");
         Long count = zoneRepository.countByIsActiveTrue();
@@ -71,8 +94,14 @@ public class ZoneService {
         return count;
     }
 
-    // Get zone by zoneId
-    public ZoneDTO getZoneById(String zoneId) { // Changed from Long to UUID
+    /**
+     * Fetches a zone by its ID.
+     * 
+     * @param zoneId The ID of the zone.
+     * @return A ZoneDTO object representing the requested zone.
+     * @throws ZoneNotFoundException if the zone with the specified ID is not found.
+     */
+    public ZoneDTO getZoneById(String zoneId) {
         logger.info("Entering getZoneById() with Zone ID: {}", zoneId);
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new ZoneNotFoundException("Zone with Zone ID " + zoneId + " not found."));
@@ -81,11 +110,15 @@ public class ZoneService {
         return zoneDTO;
     }
 
-
-    // Toggle the active status of a zone
+    /**
+     * Toggles the active status of a zone.
+     * 
+     * @param zoneId The ID of the zone.
+     * @return A ZoneDTO object representing the updated zone.
+     * @throws ZoneNotFoundException if the zone with the specified ID is not found.
+     */
     public ZoneDTO toggleZoneStatus(String zoneId) {
         logger.info("Entering toggleZoneStatus() with Zone ID: {}", zoneId);
-
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> {
                     logger.error("Zone with Zone ID {} not found in toggleZoneStatus()", zoneId);
@@ -101,7 +134,12 @@ public class ZoneService {
         return updatedZoneDTO;
     }
 
-    // Create a new zone
+    /**
+     * Creates a new zone.
+     * 
+     * @param zoneDTO A ZoneDTO object containing the details of the new zone.
+     * @return A ZoneDTO object representing the created zone.
+     */
     public ZoneDTO createZone(ZoneDTO zoneDTO) {
         logger.info("Entering createZone()");
         Zone zone = convertToEntity(zoneDTO);
@@ -111,7 +149,14 @@ public class ZoneService {
         return savedZoneDTO;
     }
 
-    // Update an existing zone
+    /**
+     * Updates an existing zone.
+     * 
+     * @param zoneId The ID of the zone to update.
+     * @param zoneDTO A ZoneDTO object containing updated details.
+     * @return A ZoneDTO object representing the updated zone.
+     * @throws ZoneNotFoundException if the zone with the specified ID is not found.
+     */
     public ZoneDTO updateZone(String zoneId, ZoneDTO zoneDTO) {
         logger.info("Entering updateZone() with Zone ID: {}", zoneId);
         Zone existingZone = zoneRepository.findById(zoneId)
@@ -128,7 +173,12 @@ public class ZoneService {
         return updatedZoneDTO;
     }
 
-    // Delete a zone
+    /**
+     * Deletes a zone by its ID.
+     * 
+     * @param zoneId The ID of the zone to delete.
+     * @throws ZoneNotFoundException if the zone with the specified ID is not found.
+     */
     public void deleteZone(String zoneId) {
         logger.info("Entering deleteZone() with Zone ID: {}", zoneId);
         if (!zoneRepository.existsById(zoneId)) {
@@ -139,17 +189,27 @@ public class ZoneService {
         logger.info("Exiting deleteZone() with Zone ID: {}", zoneId);
     }
 
-    // Convert Zone entity to ZoneDTO
+    /**
+     * Converts a Zone entity to a ZoneDTO.
+     * 
+     * @param zone The Zone entity to convert.
+     * @return A ZoneDTO object.
+     */
     private ZoneDTO convertToDTO(Zone zone) {
         ZoneDTO zoneDTO = new ZoneDTO();
-        zoneDTO.setZoneId(zone.getZoneId()); // Updated field name
+        zoneDTO.setZoneId(zone.getZoneId());
         zoneDTO.setZoneName(zone.getZoneName());
         zoneDTO.setDescription(zone.getDescription());
         zoneDTO.setIsActive(zone.getIsActive());
         return zoneDTO;
     }
 
-    // Convert ZoneDTO to Zone entity
+    /**
+     * Converts a ZoneDTO to a Zone entity.
+     * 
+     * @param zoneDTO The ZoneDTO object to convert.
+     * @return A Zone entity.
+     */
     private Zone convertToEntity(ZoneDTO zoneDTO) {
         Zone zone = new Zone();
         zone.setZoneName(zoneDTO.getZoneName());

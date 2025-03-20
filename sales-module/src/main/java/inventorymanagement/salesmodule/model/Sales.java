@@ -15,7 +15,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
-
+/**
+ * Represents a Sale entity mapped to the "Sales" table.
+ * Contains fields for sale details (saleId, itemName, quantity, price, timestamps) 
+ * and a Many-to-One relationship with the Customer entity.
+ * Leverages JPA annotations for database mapping and automatic timestamp handling.
+ */
 @Entity
 @Table(name = "Sales")
 public class Sales {
@@ -33,6 +38,11 @@ public class Sales {
 
     @Column(nullable = false)
     private double price;
+    
+    
+
+	@Column
+    private  Long StockId;
 
     @Column(name = "sale_date", nullable = false, updatable = false)
     @CreationTimestamp
@@ -47,7 +57,10 @@ public class Sales {
     @UpdateTimestamp
     private LocalDateTime lastUpdated;
 
-    // Getters and setters
+    /**
+     *  Getters and setters
+    
+     */
     public Long getSaleId() {
         return saleId;
     }
@@ -103,4 +116,12 @@ public class Sales {
     public void setLastUpdated(LocalDateTime lastUpdated) {
         this.lastUpdated = lastUpdated;
     }
+    
+    public Long getStockId() {
+		return StockId;
+	}
+
+	public void setStockId(Long stockId) {
+		StockId = stockId;
+	}
 }

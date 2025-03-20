@@ -1,16 +1,20 @@
 package inventorymanagement.purchasemodule.service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import inventorymanagement.purchasemodule.Client.VendorFeignClient;
 import inventorymanagement.purchasemodule.dao.PurchaseDao;
 import inventorymanagement.purchasemodule.dto.PurchaseDto;
+import inventorymanagement.purchasemodule.dto.PurchaseMetricsDto;
 import inventorymanagement.purchasemodule.entity.Purchase;
 import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Pageable;
 
 @Service
 @Slf4j
@@ -93,4 +97,8 @@ public class PurchaseService {
                 .distinct()
                 .collect(Collectors.toList());
     }
-}
+    
+    public List<PurchaseMetricsDto> getRecentPurchases(Pageable pageable) {
+        // Call the repository method to fetch recent purchases
+        return purchaseDao.findRecentPurchases(pageable);
+    }}

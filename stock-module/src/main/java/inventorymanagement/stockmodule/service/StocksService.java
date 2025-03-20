@@ -15,6 +15,7 @@ import inventorymanagement.stockmodule.dto.StockDTO;
 import inventorymanagement.stockmodule.entity.Notification;
 import inventorymanagement.stockmodule.entity.Stocks;
 import inventorymanagement.stockmodule.exception.StockNotFoundException;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -26,6 +27,11 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
+/**
+ * Service class for managing stocks.
+ * Includes logging, database operations, and external service interactions.
+ * Autowires repositories and Feign clients for seamless integration.
+ */
 @Slf4j
 @Service
 public class StocksService {
@@ -47,6 +53,14 @@ public class StocksService {
     private static final int LOW_STOCK_THRESHOLD = 100;
 
     // Convert Stocks entity to StockDTO
+    /**
+     * Converts a Stocks entity into a StockDTO.
+     * Includes logging for debugging and maps entity fields to DTO fields.
+     * Fetches related notification messages for the stock.
+     *
+     * @param stock The Stocks entity to be converted.
+     * @return StockDTO object containing the mapped fields.
+     */
     private StockDTO convertToDTO(Stocks stock) {
     	
     	
@@ -72,6 +86,13 @@ public class StocksService {
 
 
     // Convert StockDTO to Stocks entity
+    /**
+     * Converts a StockDTO object into a Stocks entity.
+     * Generates a new UUID if stockId is null and sets default values for zoneId, vendorId, and purchaseId.
+     *
+     * @param stockDTO The StockDTO object to be converted.
+     * @return Stocks entity with mapped and default fields.
+     */
     private Stocks convertToEntity(StockDTO stockDTO) {
         UUID stockId = stockDTO.getStockId() != null ? stockDTO.getStockId() : UUID.randomUUID();
         return new Stocks(
@@ -90,9 +111,21 @@ public class StocksService {
     }
 
     // 1. Create Stock
+    /**
+     * Creates or updates a stock entry.
+     * Updates quantity if stock exists, otherwise creates a new entry.
+     * Saves stock data, calculates total price, and returns the updated details.
+     */
     @Transactional
     public StockDTO createStock(StockDTO stockDTO) {
         log.info("Creating or updating stock with itemName: {}", stockDTO.getItemName());
+
+        // Validate if the item exists in the Purchase module
+        List<String> purchasedItemNames = purchaseFeignClient.getItemNames();
+        if (!purchasedItemNames.contains(stockDTO.getItemName())) {
+            log.error("Item '{}' not found in purchases. Cannot add to stock.", stockDTO.getItemName());
+            throw new IllegalArgumentException("Item not found in purchases. Cannot add to stock.");
+        }
 
         // Check if the item already exists in stock
         Optional<Stocks> existingStock = stockRepository.findByItemName(stockDTO.getItemName());
@@ -101,7 +134,7 @@ public class StocksService {
         if (existingStock.isPresent()) {
             // If stock exists, increment the quantity
             stock = existingStock.get();
-            stock.setQuantity(stock.getQuantity() + stockDTO.getQuantity()); // Add new quantity to existing
+            stock.setQuantity(stock.getQuantity() + stockDTO.getQuantity());
             log.info("Stock updated for itemName: {}. New quantity: {}", stock.getItemName(), stock.getQuantity());
         } else {
             // If stock does not exist, create a new stock entry
@@ -110,8 +143,7 @@ public class StocksService {
         }
 
         // Save the stock and flush to ensure persistence
-        stock = stockRepository.save(stock);
-        stockRepository.saveAndFlush(stock);
+        stock = stockRepository.saveAndFlush(stock);
 
         // Convert the stock entity to a DTO
         StockDTO responseDTO = convertToDTO(stock);
@@ -125,6 +157,12 @@ public class StocksService {
 
 
     // 2. Display All Stocks
+    /**
+     * Fetches and returns a list of all stock entries as StockDTO objects.
+     * Handles database interaction, ensures thread safety, and logs operations.
+     *
+     * @return List of StockDTO objects representing all stocks in the database.
+     */
     public List<StockDTO> getAllStocks() {
         log.info("Entering getAllStocks method");
         List<StockDTO> stockDTOs = new CopyOnWriteArrayList<>();
@@ -145,6 +183,15 @@ public class StocksService {
     }
 
     // 3. Get Stock by ID
+    /**
+     * Retrieves a stock by its unique ID.
+     * Throws StockNotFoundException if no stock is found for the given ID.
+     * Logs the operation and converts the stock entity to a StockDTO.
+     *
+     * @param stockId The unique identifier of the stock.
+     * @return StockDTO representing the requested stock.
+     * @throws StockNotFoundException If the stock is not found in the database.
+     */
     @Transactional
     public StockDTO getStockById(UUID stockId) throws StockNotFoundException {
         log.info("Fetching stock by ID: {}", stockId);
@@ -175,9 +222,20 @@ public class StocksService {
         stock.setZoneName(stockDTO.getZoneName());
         stock.setVendorName(stockDTO.getVendorName());
         stockRepository.save(stock);
+        checkAndNotifyLowStock(stock);
     }
 
     // 5. Remove Stock
+    /**
+    * Updates an existing stock entry by its ID.
+    * Validates fields from the provided StockDTO and updates non-null, valid values.
+    * Throws StockNotFoundException if the stock ID is not found.
+    * Logs the operation and saves the updated stock to the database.
+    *
+    * @param stockIdString The ID of the stock to be updated (as a string).
+    * @param stockDTO The DTO containing the updated stock details.
+    * @throws StockNotFoundException If no stock is found for the given ID.
+    */
     @Transactional
     public void removeItem(UUID stockId, int quantity) throws StockNotFoundException {
         log.info("Removing item with stock ID: {} by quantity: {}", stockId, quantity);
@@ -191,6 +249,15 @@ public class StocksService {
     }
 
     // 6. Restock Item
+    /**
+     * Restocks an item by increasing its quantity.
+     * Throws StockNotFoundException if the stock ID is not found.
+     * Logs the operation and updates the stock in the database.
+     *
+     * @param stockId The unique identifier of the stock to restock.
+     * @param quantity The amount to add to the current stock quantity.
+     * @throws StockNotFoundException If the stock is not found in the database.
+     */
     @Transactional
     public void restockItem(UUID stockId, int quantity) throws StockNotFoundException {
         log.info("Restocking item with stock ID: {} by quantity: {}", stockId, quantity);
@@ -201,56 +268,63 @@ public class StocksService {
     }
 
     // 7. Check and Notify Low Stock
-    @Scheduled(cron = "0 0 0 * * ?")
+    /**
+     * Scheduled task that runs daily at midnight to check and notify low stock levels.
+     * Logs the start and completion of the task while invoking the low stock check method.
+     */
+    @Scheduled(cron = "0 0 0/12 * * ?")
     public void scheduledLowStockCheck() {
         log.info("Scheduled task to check and notify low stock started.");
-        checkAndNotifyLowStock();
+        List<Stocks> stocksList = stockRepository.findAll(); // Fetch all stocks
+        for (Stocks stock : stocksList) {
+            checkAndNotifyLowStock(stock); // Call the method with each stock
+        }
         log.info("Scheduled task to check and notify low stock completed.");
     }
+    @PostConstruct
+    public void init() {
+        log.debug("NotificationRepository: {}", notificationRepository);
+    }
 
+    /**
+     * Checks for low stock items and sends notifications if needed.
+     * - Identifies stocks with quantities below the threshold.
+     * - Ensures no duplicate notifications for the same item.
+     * - Logs and saves updated stock and notifications to the database.
+     */
     @Transactional
-    public void checkAndNotifyLowStock() {
-        log.info("Checking for low stock and sending notifications.");
-        List<Stocks> stocksList = stockRepository.findByQuantityLessThan(LOW_STOCK_THRESHOLD);  // Use the custom query
-        log.debug("Total stocks to check: {}", stocksList.size());
-
-        for (Stocks stock : stocksList) {
-            log.debug("Checking stock: {}", stock.getItemName());
-            log.debug("Current quantity: {}", stock.getQuantity());
-            
-            List<Notification> existingNotifications = notificationRepository.findByStocks(stock);  // <-- Added this line
-            boolean notificationExists = existingNotifications.stream()  // <-- Added this line
-                    .anyMatch(notification -> notification.getMessage().contains("Stock is running low for item: "));  // <-- Added this line
-            log.debug("Existing notifications for stock {}: {}", stock.getItemName(), existingNotifications);
-            if (stock.getQuantity() < LOW_STOCK_THRESHOLD && !notificationExists) {
+    public void checkAndNotifyLowStock(Stocks stock) {
+        log.info("Checking stock: {} with quantity: {}", stock.getItemName(), stock.getQuantity());
+ 
+        if (stock.getQuantity() < LOW_STOCK_THRESHOLD) {
+            Optional<Notification> existingNotification = notificationRepository.findByStocksAndMessage(stock, "Stock is running low for item: " + stock.getItemName());
+            if (existingNotification.isEmpty()) {
                 log.info("Stock is low for item: {}", stock.getItemName());
                 Notification notification = new Notification(stock, "Stock is running low for item: " + stock.getItemName());
-
-                // Save notification
-               
-
-                log.debug("Saving stock: {}", stock);
-                stockRepository.save(stock);
-                log.debug("Stock saved with ID: {}", stock.getStockId());
-                
-                log.debug("Saving notification: {}", notification);
                 notificationRepository.save(notification);
-                log.debug("Notification saved.");
-
-                log.info("Saved Notification for item: {} with message: {}", stock.getItemName(), notification.getMessage());
+                log.info("Notification saved for item: {}", stock.getItemName());
             } else {
-            	if (notificationExists) {  // <-- Added this condition
-                    log.debug("Notification already exists for item: {}", stock.getItemName());
+                log.info("Notification already exists for item: {}", stock.getItemName());
+            }
+        } else {
+            List<Notification> notifications = notificationRepository.findByStocks(stock);
+            for (Notification notification : notifications) {
+                if (notification.getMessage().contains("Stock is running low for item: " + stock.getItemName())) {
+                    log.info("Removing notification for item: {}", stock.getItemName());
+                    notificationRepository.delete(notification);
+                    log.info("Notification removed for item: {}", stock.getItemName());
                 }
-            	if (stock.getQuantity() >= LOW_STOCK_THRESHOLD) {  // <-- Added this condition
-                    log.debug("Stock quantity for item {} is sufficient.", stock.getItemName());
-                }
-              
             }
         }
-        log.info("Completed checking for low stock and sending notifications.");
     }
-    
+    /**
+    * Checks if a specified quantity of a stock item is available.
+    * Queries the stock by item name and verifies if the quantity meets or exceeds the required amount.
+    *
+    * @param itemName The name of the stock item to check.
+    * @param quantity The quantity required.
+    * @return true if the stock is available in sufficient quantity, otherwise false.
+    */
     @Transactional
     public boolean checkStockAvailability(String itemName, int quantity) {
         Optional<Stocks> stockItemOptional = stockRepository.findByItemName(itemName);
@@ -258,6 +332,15 @@ public class StocksService {
     }
 
     // 8. Update Stock Quantity
+    /**
+     * Updates the stock quantity for a specified item.
+     * - Reduces the quantity by the specified amount if sufficient stock is available.
+     * - Throws a RuntimeException if stock is insufficient or the item is not found.
+     *
+     * @param itemName The name of the stock item to update.
+     * @param quantity The quantity to reduce from the stock.
+     */
+    
     @Transactional
     public void updateStockQuantity(String itemName, int quantity) {
         Optional<Stocks> stockItemOptional = stockRepository.findByItemName(itemName);
@@ -274,6 +357,15 @@ public class StocksService {
         }
     }
     // 8. Get All Stock Names
+    /**
+     * Provides utility methods for retrieving stock, vendor, zone, and purchase details:
+     * - getAllStockNames: Returns a list of all stock item names from the database.
+     * - getAvailableItemNamesForStock: Finds item names not currently in stock by comparing them with purchase records.
+     * - getVendorNames: Fetches all vendor names from an external service.
+     * - getNamesOfActiveZones: Retrieves active zone names from an external service.
+     * - getItemNames: Fetches item names from purchase records via an external service.
+     * - getItemNameAndQuantity: Returns a list of item names and their corresponding quantities from the database.
+     */
     public List<String> getAllStockNames() {
         log.info("Fetching all stock names");
         List<String> stockNames = new CopyOnWriteArrayList<>();

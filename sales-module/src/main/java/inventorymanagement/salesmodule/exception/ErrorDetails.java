@@ -1,5 +1,10 @@
 package inventorymanagement.salesmodule.exception;
 
+/**
+ * Represents error details for exception handling.
+ * Contains fields for an error message and additional details.
+ * Provides constructors, getters, and setters for data access and modification.
+ */
 public class ErrorDetails {
     private String message;
     private String details;

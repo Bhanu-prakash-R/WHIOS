@@ -2,7 +2,10 @@ package inventorymanagement.zonemodule.controller;
 
 import inventorymanagement.zonemodule.dto.ZoneDTO;
 import inventorymanagement.zonemodule.exception.ZoneNotFoundException;
+import inventorymanagement.zonemodule.response.ApiResponse;
 import inventorymanagement.zonemodule.service.ZoneService;
+import jakarta.validation.Valid;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,143 +13,133 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
+/**
+ * REST controller for managing zones in the inventory management system.
+ * Provides endpoints to create, update, delete, and fetch zone-related data.
+ */
 @RestController
 @RequestMapping("/api/zones")
 public class ZoneController {
-
+    
+    // Logger instance for logging important events.
     private static final Logger logger = LoggerFactory.getLogger(ZoneController.class);
-
+    
+    // Autowired ZoneService to delegate business logic.
     @Autowired
     private ZoneService zoneService;
 
-    // Get all zones
+    /**
+     * Fetches all zones.
+     * 
+     * @return ResponseEntity containing all ZoneDTOs wrapped in an ApiResponse.
+     */
     @GetMapping
-    public ResponseEntity<?> getAllZones() {
-        logger.info("Entering getAllZones()");
-        try {
-            List<ZoneDTO> zones = zoneService.getAllZones();
-            logger.info("Successfully fetched all zones. Exiting getAllZones()");
-            return ResponseEntity.ok(zones);
-        } catch (Exception ex) {
-            logger.error("Error in getAllZones(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error fetching zones: " + ex.getMessage());
-        }
+    public ResponseEntity<ApiResponse<List<ZoneDTO>>> getAllZones() {
+        logger.info("Fetching all zones");
+        List<ZoneDTO> zones = zoneService.getAllZones();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Zones retrieved successfully", zones));
     }
 
-    // Get all active zones
+    /**
+     * Fetches all active zones.
+     * 
+     * @return ResponseEntity containing active ZoneDTOs wrapped in an ApiResponse.
+     */
     @GetMapping("/active")
-    public ResponseEntity<?> getAllActiveZones() {
-        logger.info("Entering getAllActiveZones()");
-        try {
-            List<ZoneDTO> activeZones = zoneService.getAllActiveZones();
-            logger.info("Successfully fetched active zones. Exiting getAllActiveZones()");
-            return ResponseEntity.ok(activeZones);
-        } catch (Exception ex) {
-            logger.error("Error in getAllActiveZones(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error fetching active zones: " + ex.getMessage());
-        }
+    public ResponseEntity<ApiResponse<List<ZoneDTO>>> getAllActiveZones() {
+        logger.info("Fetching all active zones");
+        List<ZoneDTO> activeZones = zoneService.getAllActiveZones();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Active zones retrieved successfully", activeZones));
     }
 
-    // Fetch only the names of zones that are active
+    /**
+     * Fetches the names of active zones.
+     * 
+     * @return ResponseEntity containing a list of active zone names wrapped in an ApiResponse.
+     */
     @GetMapping("/active/names")
-    public ResponseEntity<?> getNamesOfActiveZones() {
-        logger.info("Entering getNamesOfActiveZones()");
-        try {
-            List<String> activeZoneNames = zoneService.getNamesOfActiveZones();
-            logger.info("Successfully fetched names of active zones. Exiting getNamesOfActiveZones()");
-            return ResponseEntity.ok(activeZoneNames);
-        } catch (Exception ex) {
-            logger.error("Error in getNamesOfActiveZones(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error fetching names of active zones: " + ex.getMessage());
-        }
+    public ResponseEntity<List<String>> getNamesOfActiveZones() {
+        logger.info("Fetching names of active zones");
+        List<String> activeZoneNames = zoneService.getNamesOfActiveZones();
+        return ResponseEntity.ok(activeZoneNames);
     }
 
-    // Count the number of active zones
+    /**
+     * Counts the number of active zones.
+     * 
+     * @return ResponseEntity containing the count of active zones wrapped in an ApiResponse.
+     */
     @GetMapping("/count/active")
-    public ResponseEntity<?> countActiveZones() {
-        logger.info("Entering countActiveZones()");
-        try {
-            Long count = zoneService.countActiveZones();
-            logger.info("Successfully counted active zones. Exiting countActiveZones()");
-            return ResponseEntity.ok(count);
-        } catch (Exception ex) {
-            logger.error("Error in countActiveZones(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error counting active zones: " + ex.getMessage());
-        }
+    public ResponseEntity<ApiResponse<Long>> countActiveZones() {
+        logger.info("Counting active zones");
+        Long count = zoneService.countActiveZones();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Count of active zones retrieved successfully", count));
     }
 
-    // Get zone by zoneId
+    /**
+     * Fetches a specific zone by its ID.
+     * 
+     * @param zoneId Unique identifier of the zone.
+     * @return ResponseEntity containing the specified ZoneDTO wrapped in an ApiResponse.
+     */
     @GetMapping("/{zoneId}")
-    public ResponseEntity<?> getZoneById(@PathVariable String zoneId) { // Changed from Long to UUID
-        logger.info("Entering getZoneById() with Zone ID: {}", zoneId);
-        try {
-            ZoneDTO zone = zoneService.getZoneById(zoneId);
-            logger.info("Successfully fetched zone. Exiting getZoneById()");
-            return ResponseEntity.ok(zone);
-        } catch (Exception ex) {
-            logger.error("Error in getZoneById(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error fetching zone: " + ex.getMessage());
-        }
+    public ResponseEntity<ApiResponse<ZoneDTO>> getZoneById(@PathVariable String zoneId) {
+        logger.info("Fetching zone with ID: {}", zoneId);
+        ZoneDTO zone = zoneService.getZoneById(zoneId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Zone retrieved successfully", zone));
     }
 
-    // Create a new zone
+    /**
+     * Creates a new zone.
+     * 
+     * @param zoneDTO Data transfer object containing zone details.
+     * @return ResponseEntity containing the created ZoneDTO wrapped in an ApiResponse.
+     */
     @PostMapping
-    public ResponseEntity<?> createZone(@RequestBody ZoneDTO zoneDTO) {
-        logger.info("Entering createZone()");
-        try {
-            ZoneDTO createdZone = zoneService.createZone(zoneDTO);
-            logger.info("Successfully created zone. Exiting createZone()");
-            return ResponseEntity.ok(createdZone);
-        } catch (Exception ex) {
-            logger.error("Error in createZone(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error creating zone: " + ex.getMessage());
-        }
+    public ResponseEntity<ApiResponse<ZoneDTO>> createZone(@Valid @RequestBody ZoneDTO zoneDTO) {
+        logger.info("Creating a new zone");
+        ZoneDTO createdZone = zoneService.createZone(zoneDTO);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Zone created successfully", createdZone));
     }
 
-    // Update an existing zone
+    /**
+     * Updates an existing zone.
+     * 
+     * @param zoneId Unique identifier of the zone to update.
+     * @param zoneDTO Data transfer object containing updated zone details.
+     * @return ResponseEntity containing the updated ZoneDTO wrapped in an ApiResponse.
+     */
     @PutMapping("/{zoneId}")
-    public ResponseEntity<?> updateZone(@PathVariable String zoneId, @RequestBody ZoneDTO zoneDTO) {
-        logger.info("Entering updateZone() with Zone ID: {}", zoneId);
-        try {
-            ZoneDTO updatedZone = zoneService.updateZone(zoneId, zoneDTO);
-            logger.info("Successfully updated zone. Exiting updateZone()");
-            return ResponseEntity.ok(updatedZone);
-        } catch (Exception ex) {
-            logger.error("Error in updateZone(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error updating zone: " + ex.getMessage());
-        }
+    public ResponseEntity<ApiResponse<ZoneDTO>> updateZone(@PathVariable String zoneId, @Valid @RequestBody ZoneDTO zoneDTO) {
+        logger.info("Updating zone with ID: {}", zoneId);
+        ZoneDTO updatedZone = zoneService.updateZone(zoneId, zoneDTO);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Zone updated successfully", updatedZone));
     }
 
-    // Toggle zone status
+    /**
+     * Toggles the active status of a specific zone.
+     * 
+     * @param zoneId Unique identifier of the zone.
+     * @return ResponseEntity containing the updated ZoneDTO with toggled status wrapped in an ApiResponse.
+     */
     @PatchMapping("/{zoneId}/toggle-status")
-    public ResponseEntity<?> toggleZoneStatus(@PathVariable String zoneId) {
-        logger.info("Entering toggleZoneStatus() with Zone ID: {}", zoneId);
-        try {
-            ZoneDTO updatedZone = zoneService.toggleZoneStatus(zoneId);
-            logger.info("Successfully toggled zone status. Exiting toggleZoneStatus()");
-            return ResponseEntity.ok(updatedZone);
-        } catch (ZoneNotFoundException ex) {
-            logger.error("Error in toggleZoneStatus(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(404).body(ex.getMessage());
-        } catch (Exception ex) {
-            logger.error("Error in toggleZoneStatus(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error toggling zone status");
-        }
+    public ResponseEntity<ApiResponse<ZoneDTO>> toggleZoneStatus(@PathVariable String zoneId) {
+        logger.info("Toggling status for zone ID: {}", zoneId);
+        ZoneDTO updatedZone = zoneService.toggleZoneStatus(zoneId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Zone status toggled successfully", updatedZone));
     }
 
-    // Delete a zone
+    /**
+     * Deletes a specific zone.
+     * 
+     * @param zoneId Unique identifier of the zone to delete.
+     * @return ResponseEntity confirming successful deletion of the zone.
+     */
     @DeleteMapping("/{zoneId}")
-    public ResponseEntity<?> deleteZone(@PathVariable String zoneId) {
-        logger.info("Entering deleteZone() with Zone ID: {}", zoneId);
-        try {
-            zoneService.deleteZone(zoneId);
-            logger.info("Successfully deleted zone. Exiting deleteZone()");
-            return ResponseEntity.noContent().build();
-        } catch (Exception ex) {
-            logger.error("Error in deleteZone(): {}", ex.getMessage(), ex);
-            return ResponseEntity.status(500).body("Error deleting zone: " + ex.getMessage());
-        }
+    public ResponseEntity<ApiResponse<Void>> deleteZone(@PathVariable String zoneId) {
+        logger.info("Deleting zone with ID: {}", zoneId);
+        zoneService.deleteZone(zoneId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Zone deleted successfully", null));
     }
 }

@@ -15,7 +15,14 @@ public class customerService {
     @Autowired
     private customerRepo customerRepository;
 
-    // Get or create a customer based on provided details
+    /**
+     * Get or create a customer based on provided details
+     * @param name  
+     * @param phone
+     * @param email
+     * @param address
+     * @return
+     */
     public Customer getOrCreateCustomer(String name, String phone, String email, String address) {
         // Check if a customer exists by phone number and email
         Customer existingCustomer = customerRepository.findByContactDetails_PhoneNumberAndContactDetails_Email(phone, email);
@@ -33,18 +40,25 @@ public class customerService {
             return customerRepository.save(existingCustomer);
         }
 
-        // Create a new customer if not found
+        /**
+         *  Create a new customer if not found
+         *  and throws InvalidSaleRequestException in case of errors.
+         */
         Customer newCustomer = new Customer();
         newCustomer.setName(name);
 
-        // Populate contact details
+        /**
+         *  Populate contact details
+         */
         ContactDetails contactDetails = new ContactDetails();
         contactDetails.setPhoneNumber(phone);
         contactDetails.setEmail(email);
         contactDetails.setAddress(address);
         newCustomer.setContactDetails(contactDetails);
 
-        // Save and return the new customer
+        /**
+         * Save and return the new customer
+         */
         try {
             return customerRepository.save(newCustomer);
         } catch (Exception e) {
@@ -52,7 +66,12 @@ public class customerService {
         }
     }
 
-    // Retrieve all customers
+    
+    /**
+     * Retrieves all customers from the database.
+     * Throws a RuntimeException if an error occurs during retrieval.
+     */
+
     public List<Customer> getAllCustomers() {
         try {
             return customerRepository.findAll();
@@ -62,6 +81,10 @@ public class customerService {
     }
 
     // Retrieve a customer by ID
+    /**
+     * Fetches a Customer by their ID.
+     * Throws CustomerNotFoundException if no customer is found, or RuntimeException in case of other errors.
+     */
     public Customer getCustomerById(Long id) {
         try {
             return customerRepository.findById(id)
@@ -71,7 +94,11 @@ public class customerService {
         }
     }
 
-    // Update customer details
+    
+    /**
+     * Updates an existing customer's details, including name and contact information.
+     * Throws CustomerNotFoundException if the customer is not found, or RuntimeException on errors.
+     */
     public Customer updateCustomer(Long id, String name, String phone, String email, String address) {
         try {
             Customer existingCustomer = customerRepository.findById(id)
@@ -98,7 +125,12 @@ public class customerService {
         }
     }
 
-    // Delete a customer by ID
+   
+    /**
+     * Deletes a customer by their ID.
+     * Throws CustomerNotFoundException if not found, or RuntimeException on errors.
+     */
+
     public void deleteCustomer(Long id) {
         try {
             Customer existingCustomer = customerRepository.findById(id)

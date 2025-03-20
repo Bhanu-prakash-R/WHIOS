@@ -1,10 +1,13 @@
 package inventorymanagement.purchasemodule.controller;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import inventorymanagement.purchasemodule.dto.PurchaseDto;
+import inventorymanagement.purchasemodule.dto.PurchaseMetricsDto;
 import inventorymanagement.purchasemodule.exception.ResourceNotFoundException;
 import inventorymanagement.purchasemodule.service.PurchaseService;
 import lombok.extern.slf4j.Slf4j;
@@ -72,5 +75,19 @@ public class PurchaseController {
     	log.info("Fetching itemNames");
     	List<String> items=purchaseService.getItemNames();
     	return ResponseEntity.ok(items);
+    }
+    
+    @GetMapping("/recent")
+    public ResponseEntity<List<PurchaseMetricsDto>> getRecentPurchases(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "3") int size) {
+
+        // Create a pageable object for pagination
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Fetch recent purchases using the service
+        List<PurchaseMetricsDto> recentPurchases = purchaseService.getRecentPurchases(pageable);
+
+        return ResponseEntity.ok(recentPurchases);
     }
 }

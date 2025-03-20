@@ -1,7 +1,9 @@
 package com.example.performancemetrics.Controller;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +13,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.performancemetrics.Dto.PerformanceItemDto;
+import com.example.performancemetrics.Dto.PerformancePurchaseDto;
+import com.example.performancemetrics.Dto.PerformanceSalesDto;
 import com.example.performancemetrics.Service.MetricsService;
 
 @RestController
@@ -24,10 +29,10 @@ public class MetricsController {
 
     // Endpoint to fetch recent sales data
     @GetMapping("/recent-sales")
-    public ResponseEntity<List<Object[]>> getRecentSales() {
+    public ResponseEntity<List<PerformanceSalesDto>> getRecentSales() {
         logger.info("Received request to fetch recent sales");
 
-        List<Object[]> recentSales;
+        List<PerformanceSalesDto> recentSales;
 
         try {
             recentSales = metricsService.getRecentSalesForDashboard();
@@ -59,9 +64,17 @@ public class MetricsController {
         logger.info("Sending total revenue response to client");
         return ResponseEntity.ok(totalRevenues);
     }
-    @GetMapping("/stockMetrics")
-    public ResponseEntity<List<Map<String, Object>>> getStockMetrics() {
-        List<Map<String, Object>> stockMetrics = metricsService.getStockMetrics();
+    @GetMapping("/stock")
+    public ResponseEntity<List<PerformanceItemDto>> getStockMetrics() {
+        List<PerformanceItemDto> stockMetrics = metricsService.getStockMetrics();
         return ResponseEntity.ok(stockMetrics);
     }
+    
+    @GetMapping("/recent-purchases")
+    public ResponseEntity<List<PerformancePurchaseDto>> getRecentPurchases() {
+        // Fetch recent purchases via service
+        List<PerformancePurchaseDto> recentPurchases = metricsService.getRecentPurchases();
+        return ResponseEntity.ok(recentPurchases);
+    }
+
 }

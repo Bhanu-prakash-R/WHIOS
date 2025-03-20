@@ -2,6 +2,7 @@ package inventorymanagement.salesmodule.Service;
 
 import inventorymanagement.salesmodule.Dto.SaleRequestDto;
 import inventorymanagement.salesmodule.Dto.SaleResponseDto;
+import inventorymanagement.salesmodule.Dto.SalesMetricsDto;
 import inventorymanagement.salesmodule.Dto.CustomerResponseDto;
 import inventorymanagement.salesmodule.Repository.salesRepo;
 import inventorymanagement.salesmodule.exception.InsufficientStockException;
@@ -41,15 +42,14 @@ public class saleService {
     @Autowired
     private StockFeignClient stockFeignClient;
     
-    
+    /**
+     * Fetches a list of stock item names using the StockFeignClient.
+     * Returns the response body containing the list of item names.
+     */
     public List<String> getStockItemNames() {
         return stockFeignClient.getStockItemNames().getBody();
     }
     
-
-
-    
-
     public List<SaleResponseDto> getAllSales() {
         logger.info("Entering getAllSales method");
         List<SaleResponseDto> salesList = repository.findAll().stream()
@@ -92,11 +92,23 @@ public class saleService {
         logger.info("Exiting getSaleById method with sale: {}", saleResponse);
         return saleResponse;
     }
-
+    /**
+     * Creates a new Sale based on the provided SaleRequestDto.
+     * - Retrieves or creates customer details.
+     * - Validates stock availability via StockFeignClient.
+     * - Throws InsufficientStockException if stock is unavailable.
+     */
     @Transactional
     public SaleResponseDto createSale(SaleRequestDto saleRequestDto) {
         logger.info("Entering createSale method with item: {}", saleRequestDto.getItemName());
+ 
+        ResponseEntity<List<String>> stockItemsResponse = stockFeignClient.getStockItemNames();
+        List<String> stockItemNames = stockItemsResponse.getBody();
 
+        if (stockItemNames == null || !stockItemNames.contains(saleRequestDto.getItemName())) {
+            logger.error("Item '{}' is not available in stock. Sale cannot proceed.", saleRequestDto.getItemName());
+            throw new IllegalArgumentException("Item not available in stock. Cannot proceed with sale.");
+        }
         // Retrieve or create the customer details
         Customer customer = customerService.getOrCreateCustomer(
                 saleRequestDto.getCustomerName(),
@@ -115,7 +127,9 @@ public class saleService {
             throw new InsufficientStockException("Insufficient stock for item: " + saleRequestDto.getItemName());
         }
 
-        // Create and save the sale entity
+        /**
+         *  Create and save the sale entity
+         */
         Sales sale = new Sales();
         sale.setCustomer(customer);
         sale.setItemName(saleRequestDto.getItemName());
@@ -123,15 +137,23 @@ public class saleService {
         sale.setPrice(saleRequestDto.getPrice()); // Set the price per item
         sale.setSaleDate(LocalDateTime.now());
 
-        // Save sale entity in the repository
+        /**
+         * Save sale entity in the repository
+         */
         Sales newSale = repository.save(sale);
         logger.info("Created new sale with id: {}", newSale.getSaleId());
 
-        // Update stock quantity via Stock Service
+        /**
+         * Update stock quantity via Stock Service
+         */
         stockFeignClient.updateStockQuantity(saleRequestDto.getItemName(), saleRequestDto.getQuantity());
 
-        // Create SaleResponseDto with total price (price per item * quantity)
-        double totalPrice = newSale.getPrice() * newSale.getQuantity(); // Calculate total price
+        /**
+         *  Create SaleResponseDto with total price (price per item * quantity)
+         *  // Calculate total price
+         */
+        double totalPrice = newSale.getPrice() * newSale.getQuantity(); 
+        
         SaleResponseDto saleResponse = new SaleResponseDto(
                 newSale.getSaleId(),
                 newSale.getItemName(),
@@ -150,13 +172,19 @@ public class saleService {
         return saleResponse;
     }
 
+    /**
+     * Updates an existing Sale by its ID based on the provided SaleRequestDto.
+     * Throws SaleNotFoundException if the sale is not found in the database.
+     */
 
     public SaleResponseDto updateSale(Long id, SaleRequestDto saleRequestDto) {
         logger.info("Entering updateSale method with id: {}", id);
         Sales sale = repository.findById(id)
             .orElseThrow(() -> new SaleNotFoundException("Sale not found with id: " + id));
 
-        // Update customer details
+        /**
+         *  Update customer details
+         */
         Customer customer = customerService.getOrCreateCustomer(
             saleRequestDto.getCustomerName(),
             saleRequestDto.getCustomerPhone(),
@@ -165,7 +193,9 @@ public class saleService {
         );
         sale.setCustomer(customer);
 
-        // Update sale details
+        /**
+         *  Update sale details
+         */
         sale.setItemName(saleRequestDto.getItemName());
         sale.setQuantity(saleRequestDto.getQuantity());
         sale.setPrice(saleRequestDto.getPrice());
@@ -190,7 +220,10 @@ public class saleService {
         logger.info("Exiting updateSale method with sale: {}", saleResponse);
         return saleResponse;
     }
-
+    /**
+     * Retrieves sales for a specific customer by their ID and converts them into SaleResponseDto objects.
+     * Logs the process and returns the list of sales with mapped customer details.
+     */
     public List<SaleResponseDto> getSalesByCustomer(Long customerId) {
         logger.info("Entering getSalesByCustomer method with customer id: {}", customerId);
         Customer customer = customerService.getCustomerById(customerId);
@@ -213,7 +246,12 @@ public class saleService {
         logger.info("Exiting getSalesByCustomer method");
         return salesList;
     }
-
+    
+    /**
+     * Deletes a sale by its ID.
+     * Throws SaleNotFoundException if the sale is not found.
+     * Logs the process of finding and deleting the sale.
+     */
     public void deleteSale(Long id) {
         logger.info("Entering deleteSale method with id: {}", id);
         Sales sale = repository.findById(id)
@@ -223,22 +261,9 @@ public class saleService {
         logger.info("Exiting deleteSale method");
     }
     
-    public List<Object[]> getRecentSales() {
-        logger.info("Entering getRecentSales method with limit: 3");
-
-        // Fetch recent sales with a fixed limit of 3
-        List<Sales> recentSales = repository.findByOrderBySaleDateDesc(Pageable.ofSize(3)); // Limit is set here
-
-        // Map to the simplified format (itemName, quantity, price)
-        List<Object[]> recentSalesSummary = recentSales.stream()
-                .map(sale -> new Object[]{sale.getItemName(), sale.getQuantity(), sale.getPrice()})
-                .collect(Collectors.toList());
-
-        logger.info("Fetched {} recent sales", recentSalesSummary.size());
-        logger.info("Exiting getRecentSales method");
-        return recentSalesSummary;
-    }
-    
+     /* total revenue grouped by item using a custom query.
+     * Logs the process and returns a list of item names and their total revenue.
+     */
     public List<Object[]> getTotalRevenuePerItem() {
         logger.info("Entering getTotalRevenuePerItem method");
 
@@ -252,7 +277,27 @@ public class saleService {
 
 
     
-   
+    public List<SalesMetricsDto> getRecentSales() {
+        logger.info("Entering getRecentSales method with limit: 3");
+
+        // Fetch recent sales with a fixed limit of 3
+        List<Sales> recentSales = repository.findByOrderBySaleDateDesc(Pageable.ofSize(3)); // Limit is set here
+
+        // Map to SalesDTO format (itemName, quantity, price, saleDate)
+        List<SalesMetricsDto> recentSalesSummary = recentSales.stream()
+                .map(sale -> new SalesMetricsDto(
+                        sale.getItemName(),
+                        sale.getQuantity(),
+                        sale.getPrice(),
+                        sale.getSaleDate()  // Include saleDate here
+                ))
+                .collect(Collectors.toList());
+
+        logger.info("Fetched {} recent sales", recentSalesSummary.size());
+        logger.info("Exiting getRecentSales method");
+        return recentSalesSummary;
+    }
+
 
 
 
