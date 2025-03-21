@@ -10,13 +10,12 @@ import inventorymanagement.salesmodule.Service.saleService;
 import inventorymanagement.salesmodule.Dto.SaleRequestDto;
 import inventorymanagement.salesmodule.Dto.SaleResponseDto;
 import inventorymanagement.salesmodule.Dto.SalesMetricsDto;
-import inventorymanagement.salesmodule.exception.SaleNotFoundException;
 import inventorymanagement.salesmodule.response.ApiResponse;
 import jakarta.validation.Valid;
-import inventorymanagement.salesmodule.exception.CustomerNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for handling sales-related API endpoints.
@@ -52,11 +51,11 @@ public class salesController {
     /**
      * Retrieves a sale record by its ID.
      *
-     * @param id The ID of the sale to fetch.
+     * @param id The ID (UUID) of the sale to fetch.
      * @return ResponseEntity containing the ApiResponse with sale details.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SaleResponseDto>> getSaleById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SaleResponseDto>> getSaleById(@PathVariable UUID id) { // Changed Long to UUID
         logger.info("Fetching sale with ID: {}", id);
         SaleResponseDto sale = salesService.getSaleById(id);
         ApiResponse<SaleResponseDto> response = new ApiResponse<>(
@@ -92,13 +91,13 @@ public class salesController {
     /**
      * Updates a sale record by its ID.
      *
-     * @param id             The ID of the sale to update.
+     * @param id             The ID (UUID) of the sale to update.
      * @param saleRequestDto The request body containing updated sale details.
      * @return ResponseEntity containing the ApiResponse with the updated sale record.
      */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<SaleResponseDto>> updateSale(
-            @PathVariable Long id,
+            @PathVariable UUID id, // Changed Long to UUID
             @Valid @RequestBody SaleRequestDto saleRequestDto) {
         logger.info("Updating sale with ID: {}", id);
         SaleResponseDto updatedSale = salesService.updateSale(id, saleRequestDto);
@@ -115,11 +114,11 @@ public class salesController {
     /**
      * Retrieves sales records for a specific customer by their ID.
      *
-     * @param customerId The ID of the customer.
+     * @param customerId The ID (UUID) of the customer.
      * @return ResponseEntity containing the ApiResponse with the list of sales for the customer.
      */
     @GetMapping("/customer/{customerId}")
-    public ResponseEntity<ApiResponse<List<SaleResponseDto>>> getSalesByCustomer(@PathVariable Long customerId) {
+    public ResponseEntity<ApiResponse<List<SaleResponseDto>>> getSalesByCustomer(@PathVariable UUID customerId) { // Changed Long to UUID
         logger.info("Fetching sales for customer with ID: {}", customerId);
         List<SaleResponseDto> sales = salesService.getSalesByCustomer(customerId);
         ApiResponse<List<SaleResponseDto>> response = new ApiResponse<>(
@@ -154,11 +153,11 @@ public class salesController {
     /**
      * Deletes a sale record by its ID.
      *
-     * @param id The ID of the sale to delete.
+     * @param id The ID (UUID) of the sale to delete.
      * @return ResponseEntity containing the ApiResponse with no data.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteSale(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteSale(@PathVariable UUID id) { // Changed Long to UUID
         logger.info("Deleting sale with ID: {}", id);
         salesService.deleteSale(id);
         ApiResponse<Void> response = new ApiResponse<>(
@@ -180,7 +179,6 @@ public class salesController {
     public ResponseEntity<List<SalesMetricsDto>> getRecentSales() {
         logger.info("Fetching 3 recent sales");
         List<SalesMetricsDto> recentSales = salesService.getRecentSales();
-        
         return ResponseEntity.ok(recentSales);
     }
 
@@ -193,7 +191,6 @@ public class salesController {
     public ResponseEntity<List<Object[]>> getTotalRevenuePerItem() {
         logger.info("Fetching total revenue per item");
         List<Object[]> totalRevenue = salesService.getTotalRevenuePerItem();
-        
         return ResponseEntity.ok(totalRevenue);
     }
 }

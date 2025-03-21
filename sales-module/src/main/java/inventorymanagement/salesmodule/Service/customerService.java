@@ -8,6 +8,7 @@ import inventorymanagement.salesmodule.Repository.customerRepo;
 import inventorymanagement.salesmodule.exception.CustomerNotFoundException;
 import inventorymanagement.salesmodule.exception.InvalidSaleRequestException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class customerService {
@@ -16,12 +17,7 @@ public class customerService {
     private customerRepo customerRepository;
 
     /**
-     * Get or create a customer based on provided details
-     * @param name  
-     * @param phone
-     * @param email
-     * @param address
-     * @return
+     * Get or create a customer based on provided details.
      */
     public Customer getOrCreateCustomer(String name, String phone, String email, String address) {
         // Check if a customer exists by phone number and email
@@ -40,25 +36,18 @@ public class customerService {
             return customerRepository.save(existingCustomer);
         }
 
-        /**
-         *  Create a new customer if not found
-         *  and throws InvalidSaleRequestException in case of errors.
-         */
+        // Create a new customer if not found
         Customer newCustomer = new Customer();
         newCustomer.setName(name);
 
-        /**
-         *  Populate contact details
-         */
+        // Populate contact details
         ContactDetails contactDetails = new ContactDetails();
         contactDetails.setPhoneNumber(phone);
         contactDetails.setEmail(email);
         contactDetails.setAddress(address);
         newCustomer.setContactDetails(contactDetails);
 
-        /**
-         * Save and return the new customer
-         */
+        // Save and return the new customer
         try {
             return customerRepository.save(newCustomer);
         } catch (Exception e) {
@@ -66,12 +55,9 @@ public class customerService {
         }
     }
 
-    
     /**
      * Retrieves all customers from the database.
-     * Throws a RuntimeException if an error occurs during retrieval.
      */
-
     public List<Customer> getAllCustomers() {
         try {
             return customerRepository.findAll();
@@ -80,12 +66,10 @@ public class customerService {
         }
     }
 
-    // Retrieve a customer by ID
     /**
      * Fetches a Customer by their ID.
-     * Throws CustomerNotFoundException if no customer is found, or RuntimeException in case of other errors.
      */
-    public Customer getCustomerById(Long id) {
+    public Customer getCustomerById(UUID id) { // Changed Long to UUID
         try {
             return customerRepository.findById(id)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + id));
@@ -94,12 +78,10 @@ public class customerService {
         }
     }
 
-    
     /**
      * Updates an existing customer's details, including name and contact information.
-     * Throws CustomerNotFoundException if the customer is not found, or RuntimeException on errors.
      */
-    public Customer updateCustomer(Long id, String name, String phone, String email, String address) {
+    public Customer updateCustomer(UUID id, String name, String phone, String email, String address) { // Changed Long to UUID
         try {
             Customer existingCustomer = customerRepository.findById(id)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + id));
@@ -125,13 +107,10 @@ public class customerService {
         }
     }
 
-   
     /**
      * Deletes a customer by their ID.
-     * Throws CustomerNotFoundException if not found, or RuntimeException on errors.
      */
-
-    public void deleteCustomer(Long id) {
+    public void deleteCustomer(UUID id) { // Changed Long to UUID
         try {
             Customer existingCustomer = customerRepository.findById(id)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + id));

@@ -1,7 +1,7 @@
 package inventorymanagement.salesmodule.model;
 
 import java.time.LocalDateTime;
-//import javax.persistence.*;
+import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -15,6 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
+
 /**
  * Represents a Sale entity mapped to the "Sales" table.
  * Contains fields for sale details (saleId, itemName, quantity, price, timestamps) 
@@ -24,25 +25,21 @@ import jakarta.validation.constraints.NotNull;
 @Entity
 @Table(name = "Sales")
 public class Sales {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO) // Generate UUID automatically
     @Column(name = "sale_id", nullable = false, updatable = false)
-    private Long saleId;
+    private UUID saleId; // Changed from Long to UUID
 
     @Column(name = "item_name", nullable = false)
     private String itemName;
 
     @Column(nullable = false)
     private int quantity;
-    
 
     @Column(nullable = false)
     private double price;
-    
-    
 
-	@Column
-    private  Long StockId;
 
     @Column(name = "sale_date", nullable = false, updatable = false)
     @CreationTimestamp
@@ -59,13 +56,12 @@ public class Sales {
 
     /**
      *  Getters and setters
-    
      */
-    public Long getSaleId() {
+    public UUID getSaleId() {
         return saleId;
     }
 
-    public void setSaleId(Long saleId) {
+    public void setSaleId(UUID saleId) {
         this.saleId = saleId;
     }
 
@@ -93,6 +89,8 @@ public class Sales {
         this.price = price;
     }
 
+   
+
     public LocalDateTime getSaleDate() {
         return saleDate;
     }
@@ -116,12 +114,4 @@ public class Sales {
     public void setLastUpdated(LocalDateTime lastUpdated) {
         this.lastUpdated = lastUpdated;
     }
-    
-    public Long getStockId() {
-		return StockId;
-	}
-
-	public void setStockId(Long stockId) {
-		StockId = stockId;
-	}
 }

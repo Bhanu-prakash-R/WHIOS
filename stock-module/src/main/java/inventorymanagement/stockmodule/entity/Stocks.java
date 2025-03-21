@@ -69,8 +69,10 @@ public class Stocks {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+    
+   
 
-    private long purchaseId;
+    private Long purchaseId;
 
     /*@OneToMany(mappedBy = "stocks", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Set<Notification> notifications = new HashSet<>();*/

@@ -121,7 +121,7 @@ public class StocksService {
     public StockDTO createStock(StockDTO stockDTO) {
         log.info("Creating or updating stock for itemName: {}, zoneName: {}", stockDTO.getItemName(), stockDTO.getZoneName());
 
-        // Step 1: Validate if the item exists in the Purchase module
+        // Validate item exists in the Purchase module
         log.info("Validating if item '{}' exists in Purchase module...", stockDTO.getItemName());
         List<String> purchasedItemNames = purchaseFeignClient.getItemNames();
 
@@ -129,10 +129,9 @@ public class StocksService {
             log.error("Item '{}' not found in Purchase module. Cannot add to stock.", stockDTO.getItemName());
             throw new IllegalArgumentException("Item not found in Purchase module: " + stockDTO.getItemName());
         }
-        log.info("Item '{}' is valid. Proceeding with autofill...", stockDTO.getItemName());
 
-        // Step 2: Fetch purchase details for autofill
-       PurchaseDetailsDto purchaseDetails;
+        // Fetch purchase details for autofill
+        PurchaseDetailsDto purchaseDetails;
         try {
             log.info("Fetching purchase details for itemName: {}", stockDTO.getItemName());
             purchaseDetails = purchaseFeignClient.getLimitedPurchaseDetails(stockDTO.getItemName());
@@ -141,60 +140,46 @@ public class StocksService {
                 throw new IllegalArgumentException("Purchase details not available for the given item name.");
             }
         } catch (Exception e) {
-            log.error("Item '{}' not found in Purchase module while fetching details.", stockDTO.getItemName());
-            throw new IllegalArgumentException("Purchase details not found for itemName: " + stockDTO.getItemName());
+            log.error("Error fetching purchase details for item '{}': {}", stockDTO.getItemName(), e.getMessage());
+            throw new IllegalArgumentException("Unable to fetch purchase details for item: " + stockDTO.getItemName());
         }
 
-        // Step 3: Autofill stockDTO fields with data from the Purchase module
-        log.info("Autofilling stock details for itemName: {}", stockDTO.getItemName());
-        if (stockDTO.getVendorName() == null || stockDTO.getVendorName().isEmpty()) {
-            stockDTO.setVendorName(purchaseDetails.getVendorName());
-        }
-        if (stockDTO.getQuantity() == 0) {
-            stockDTO.setQuantity(purchaseDetails.getQuantity());
-        }
-        if (stockDTO.getPrice() == 0) {
-            stockDTO.setPrice(purchaseDetails.getPrice());
-        }
-        if (stockDTO.getCategory() == null || stockDTO.getCategory().isEmpty()) {
-            stockDTO.setCategory(purchaseDetails.getCategory());
-        }
+        // Autofill stockDTO fields with data from the Purchase module
+        stockDTO.setVendorName(purchaseDetails.getVendorName());
+        stockDTO.setCategory(purchaseDetails.getCategory());
+        stockDTO.setQuantity(purchaseDetails.getQuantity());
+        stockDTO.setPrice(purchaseDetails.getPrice());
 
-        if (stockDTO.getPrice() <= 0) {
-            log.error("Invalid price for item '{}'. Price must be positive after autofill.", stockDTO.getItemName());
-            throw new IllegalArgumentException("Price must be positive after autofill.");
-        }
-
-        // Step 4: Check if the item already exists in stock
+        // Fetch all matching stock entries
         log.info("Checking if item '{}' already exists in stock...", stockDTO.getItemName());
-        Optional<Stocks> existingStock = stockRepository.findByItemName(stockDTO.getItemName());
+        Optional<Stocks> stocksList = stockRepository.findByItemName(stockDTO.getItemName());
 
         Stocks stock;
-        if (existingStock.isPresent()) {
-            // If stock exists, increment the quantity
-            stock = existingStock.get();
-            stock.setQuantity(stock.getQuantity() + stockDTO.getQuantity());
-            log.info("Stock updated for itemName: {}. New quantity: {}", stock.getItemName(), stock.getQuantity());
-        } else {
-            // If stock does not exist, create a new stock entry
+        if (stocksList.isEmpty()) {
+            // Create new stock entry if no match found
             stock = convertToEntity(stockDTO);
             log.info("New stock entry created for itemName: {} with quantity: {}", stock.getItemName(), stock.getQuantity());
+        } else {
+            // Handle multiple results by selecting the first one (or custom logic)
+            stock = stocksList.get(); // Use the first record for simplicity
+            stock.setQuantity(stock.getQuantity() + stockDTO.getQuantity()); // Update quantity
+            stock.setPrice(stock.getPrice() + (purchaseDetails.getPrice() * purchaseDetails.getQuantity())); // Update total price
+            stock.setVendorName(purchaseDetails.getVendorName());
+            stock.setCategory(purchaseDetails.getCategory());
+            log.info("Stock updated for itemName: {}. New quantity: {}, New price: {}", stock.getItemName(), stock.getQuantity(), stock.getPrice());
         }
 
-        // Step 5: Save the stock and flush to ensure persistence
-        log.info("Saving stock entry for itemName: {}", stockDTO.getItemName());
+        // Save the stock and flush to ensure persistence
         stock = stockRepository.saveAndFlush(stock);
 
-        // Step 6: Convert the stock entity to a DTO for response
+        // Convert the stock entity to a DTO for the response
         StockDTO responseDTO = convertToDTO(stock);
-
-        // Calculate and set the total price (price * quantity)
-        responseDTO.setPrice(stock.getPrice() * stock.getQuantity());
+        responseDTO.setPrice(stock.getPrice()); // Total price
+        responseDTO.setQuantity(stock.getQuantity());
         log.info("Stock created/updated successfully for itemName: {} with total price: {}", stockDTO.getItemName(), responseDTO.getPrice());
 
         return responseDTO;
     }
-
 
     // 2. Display All Stocks
     /**
@@ -312,15 +297,21 @@ public class StocksService {
      * Scheduled task that runs daily at midnight to check and notify low stock levels.
      * Logs the start and completion of the task while invoking the low stock check method.
      */
-    @Scheduled(cron = "0 0 0/12 * * ?")
-    public void scheduledLowStockCheck() {
+    @Scheduled(cron = "0 */5 * * * *")
+    public List<Notification> scheduledLowStockCheck() {
         log.info("Scheduled task to check and notify low stock started.");
+        List<Notification> lowStockNotifications = new ArrayList<>();
         List<Stocks> stocksList = stockRepository.findAll(); // Fetch all stocks
         for (Stocks stock : stocksList) {
-            checkAndNotifyLowStock(stock); // Call the method with each stock
+            Notification notification = checkAndNotifyLowStock(stock); // Call the method with each stock
+            if (notification != null) {
+                lowStockNotifications.add(notification);
+            }
         }
         log.info("Scheduled task to check and notify low stock completed.");
+        return lowStockNotifications;
     }
+ 
     @PostConstruct
     public void init() {
         log.debug("NotificationRepository: {}", notificationRepository);
@@ -333,7 +324,7 @@ public class StocksService {
      * - Logs and saves updated stock and notifications to the database.
      */
     @Transactional
-    public void checkAndNotifyLowStock(Stocks stock) {
+    public Notification checkAndNotifyLowStock(Stocks stock) {
         log.info("Checking stock: {} with quantity: {}", stock.getItemName(), stock.getQuantity());
  
         if (stock.getQuantity() < LOW_STOCK_THRESHOLD) {
@@ -343,8 +334,10 @@ public class StocksService {
                 Notification notification = new Notification(stock, "Stock is running low for item: " + stock.getItemName());
                 notificationRepository.save(notification);
                 log.info("Notification saved for item: {}", stock.getItemName());
+                return notification; // Return the notification
             } else {
                 log.info("Notification already exists for item: {}", stock.getItemName());
+                return existingNotification.get(); // Return the existing notification
             }
         } else {
             List<Notification> notifications = notificationRepository.findByStocks(stock);
@@ -355,6 +348,7 @@ public class StocksService {
                     log.info("Notification removed for item: {}", stock.getItemName());
                 }
             }
+            return null; // No low stock notification
         }
     }
     /**

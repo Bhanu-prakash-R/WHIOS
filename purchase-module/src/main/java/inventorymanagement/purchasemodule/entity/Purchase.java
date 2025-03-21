@@ -45,7 +45,7 @@ public class Purchase {
      * Cannot be null.
      */
     @Column(nullable = false)
-    private int vendorId;
+    private UUID vendorId;
  
     /**
      * Category of the purchased item.

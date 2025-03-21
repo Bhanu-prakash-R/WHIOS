@@ -19,6 +19,8 @@ public class PurchaseDto {
     @Min(  value=1 ,message = "Quantity must be at least 1")
 	private int quantity;
     
+    private UUID vendorId;
+    
     
 
 	private double price;
@@ -26,8 +28,8 @@ public class PurchaseDto {
    
 	private LocalDateTime purchaseDate;
     
-    @Min(value = 1, message = "Vendor ID must be a positive integer")
-	private int vendorId;
+    /*@Min(value = 1, message = "Vendor ID must be a positive integer")
+	private int vendorId;*/
     
     @NotBlank(message = "Category cannot be blank")
 	private String category;

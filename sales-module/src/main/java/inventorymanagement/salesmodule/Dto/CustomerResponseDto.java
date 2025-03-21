@@ -2,9 +2,8 @@ package inventorymanagement.salesmodule.Dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.NonNull;
+import java.util.UUID;
 
 /**
  * Data Transfer Object (DTO) for representing customer details.
@@ -13,32 +12,24 @@ import lombok.NonNull;
  * - A partial constructor for initializing only name and email.
  */
 public class CustomerResponseDto {
-	/*@NotNull(message = "Customer ID cannot be null")
-    @NonNull*/
-    private Long customerId;
-	
-	/*@NotBlank(message = "Name cannot be blank")
-    @NonNull*/
+
+    private UUID customerId; // Changed from Long to UUID
+
     private String name;
-	
-	/*@NotBlank(message = "Phone number cannot be blank")
-	@Size(min = 10, max = 15, message = "Phone number must be between 10 and 15 characters")
-    @NonNull*/
-	private String phoneNumber;
-	
-	/*@NotBlank(message = "Email cannot be blank")
-    @Email(message = "Email should be valid")
-    @NonNull*/
+
+    private String phoneNumber;
+
     private String email;
 
     // Constructor
-    public CustomerResponseDto( Long customerId, String name, String phoneNumber, String email) {
+    public CustomerResponseDto(UUID customerId, String name, String phoneNumber, String email) {
         this.customerId = customerId;
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.email = email;
     }
-    public CustomerResponseDto( String name, String email) {
+
+    public CustomerResponseDto(String name, String email) {
         this.name = name;
         this.email = email;
     }
@@ -46,11 +37,11 @@ public class CustomerResponseDto {
     /**
      *  Getters and Setters
      */
-    public Long getCustomerId() {
+    public UUID getCustomerId() {
         return customerId;
     }
 
-    public void setCustomerId( Long customerId) {
+    public void setCustomerId(UUID customerId) {
         this.customerId = customerId;
     }
 

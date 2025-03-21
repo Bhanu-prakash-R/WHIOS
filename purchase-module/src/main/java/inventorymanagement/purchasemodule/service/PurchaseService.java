@@ -2,7 +2,7 @@ package inventorymanagement.purchasemodule.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-
+import inventorymanagement.purchasemodule.dto.VendorResponseDto;
 import inventorymanagement.purchasemodule.Client.VendorFeignClient;
 import inventorymanagement.purchasemodule.dao.PurchaseDao;
 import inventorymanagement.purchasemodule.dto.PurchaseDetailsDto;
@@ -60,19 +60,28 @@ public class PurchaseService {
     public PurchaseDto savePurchase(PurchaseDto purchaseDto) {
         log.info("Starting the creation of a new purchase for item: {}, vendor: {}", purchaseDto.getItemName(), purchaseDto.getVendorName());
 
-        // Step 1: Fetch the list of valid vendor names from the Vendor module
-        List<String> vendorNames = vendorFeignClient.getVendorNames();
-        log.info("Fetched {} vendor names from the Vendor module.", vendorNames.size());
+        // Step 1: Fetch all vendors from the Vendor module
+        List<VendorResponseDto> vendors = vendorFeignClient.getAllVendors();
+        log.info("Fetched {} vendors from the Vendor module.", vendors.size());
 
-        // Step 2: Validate the vendorName in the PurchaseDto
-        if (!vendorNames.contains(purchaseDto.getVendorName())) {
-            log.error("Invalid vendorName: {}. Vendor not found in the Vendor module.", purchaseDto.getVendorName());
-            throw new IllegalArgumentException("Vendor '" + purchaseDto.getVendorName() + "' is not a valid vendor.");
-        }
-        log.info("Vendor '{}' is valid. Proceeding with the purchase creation.", purchaseDto.getVendorName());
+        // Step 2: Validate vendorId and vendorName
+        vendors.stream()
+            .filter(vendor -> vendor.getVendorId().equals(purchaseDto.getVendorId())
+                    && vendor.getVendorName().equalsIgnoreCase(purchaseDto.getVendorName()))
+            .findFirst()
+            .orElseThrow(() -> {
+                log.error("Invalid vendorId: {} or vendorName: {}. Vendor not found in the Vendor module.",
+                          purchaseDto.getVendorId(), purchaseDto.getVendorName());
+                return new IllegalArgumentException("Invalid vendor: Vendor ID '" + purchaseDto.getVendorId() +
+                                                    "' and Vendor Name '" + purchaseDto.getVendorName() + "' do not match.");
+            });
+
+        log.info("Vendor '{}' with ID '{}' is valid. Proceeding with the purchase creation.",
+                 purchaseDto.getVendorName(), purchaseDto.getVendorId());
 
         // Step 3: Convert DTO to entity
         Purchase purchase = convertToEntity(purchaseDto);
+        purchase.setVendorId(purchaseDto.getVendorId()); // Set the validated vendorId in the entity
 
         // Step 4: Save the purchase in the database
         Purchase savedPurchase = purchaseDao.save(purchase);
@@ -172,17 +181,20 @@ public class PurchaseService {
         return purchaseDao.findRecentPurchases(pageable);
     }
 
-public PurchaseDetailsDto getLimitedPurchaseDetailsByItemName(String itemName) {
-    Optional<Purchase> purchase = purchaseDao.findByItemName(itemName);
-    if (purchase.isPresent()) {
-        Purchase p = purchase.get();
+    public PurchaseDetailsDto getLimitedPurchaseDetailsByItemName(String itemName) {
+        List<Purchase> purchase = purchaseDao.findByItemName(itemName);
+        if (purchase.isEmpty()) {
+            log.error("No purchase found for item '{}'", itemName);
+            throw new IllegalArgumentException("No purchase found for item: " + itemName);
+        }
+        Purchase p = purchase.get(0);
         return new PurchaseDetailsDto(
             p.getVendorName(),
             p.getQuantity(),
             p.getPrice(),
             p.getCategory()
         );
-    } else {
-        return null; // Or throw an exception if preferred
     }
-}}
+
+
+}

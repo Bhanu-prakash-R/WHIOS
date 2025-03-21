@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 public class saleService {
@@ -41,15 +42,14 @@ public class saleService {
     
     @Autowired
     private StockFeignClient stockFeignClient;
-    
+
     /**
      * Fetches a list of stock item names using the StockFeignClient.
-     * Returns the response body containing the list of item names.
      */
     public List<String> getStockItemNames() {
         return stockFeignClient.getStockItemNames().getBody();
     }
-    
+
     public List<SaleResponseDto> getAllSales() {
         logger.info("Entering getAllSales method");
         List<SaleResponseDto> salesList = repository.findAll().stream()
@@ -72,7 +72,7 @@ public class saleService {
         return salesList;
     }
 
-    public SaleResponseDto getSaleById(Long id) {
+    public SaleResponseDto getSaleById(UUID id) { // Changed Long to UUID
         logger.info("Entering getSaleById method with id: {}", id);
         Sales sale = repository.findById(id)
             .orElseThrow(() -> new SaleNotFoundException("Sale not found with id: " + id));
@@ -92,12 +92,7 @@ public class saleService {
         logger.info("Exiting getSaleById method with sale: {}", saleResponse);
         return saleResponse;
     }
-    /**
-     * Creates a new Sale based on the provided SaleRequestDto.
-     * - Retrieves or creates customer details.
-     * - Validates stock availability via StockFeignClient.
-     * - Throws InsufficientStockException if stock is unavailable.
-     */
+
     @Transactional
     public SaleResponseDto createSale(SaleRequestDto saleRequestDto) {
         logger.info("Entering createSale method with item: {}", saleRequestDto.getItemName());
@@ -109,7 +104,7 @@ public class saleService {
             logger.error("Item '{}' is not available in stock. Sale cannot proceed.", saleRequestDto.getItemName());
             throw new IllegalArgumentException("Item not available in stock. Cannot proceed with sale.");
         }
-        // Retrieve or create the customer details
+
         Customer customer = customerService.getOrCreateCustomer(
                 saleRequestDto.getCustomerName(),
                 saleRequestDto.getCustomerPhone(),
@@ -117,7 +112,6 @@ public class saleService {
                 saleRequestDto.getCustomerAddress()
         );
 
-        // Check stock availability before creating the sale
         ResponseEntity<Boolean> stockCheckResponse = stockFeignClient.checkStockAvailability(
                 saleRequestDto.getItemName(), saleRequestDto.getQuantity()
         );
@@ -127,38 +121,25 @@ public class saleService {
             throw new InsufficientStockException("Insufficient stock for item: " + saleRequestDto.getItemName());
         }
 
-        /**
-         *  Create and save the sale entity
-         */
         Sales sale = new Sales();
         sale.setCustomer(customer);
         sale.setItemName(saleRequestDto.getItemName());
         sale.setQuantity(saleRequestDto.getQuantity());
-        sale.setPrice(saleRequestDto.getPrice()); // Set the price per item
+        sale.setPrice(saleRequestDto.getPrice());
         sale.setSaleDate(LocalDateTime.now());
 
-        /**
-         * Save sale entity in the repository
-         */
         Sales newSale = repository.save(sale);
         logger.info("Created new sale with id: {}", newSale.getSaleId());
 
-        /**
-         * Update stock quantity via Stock Service
-         */
         stockFeignClient.updateStockQuantity(saleRequestDto.getItemName(), saleRequestDto.getQuantity());
 
-        /**
-         *  Create SaleResponseDto with total price (price per item * quantity)
-         *  // Calculate total price
-         */
         double totalPrice = newSale.getPrice() * newSale.getQuantity(); 
         
         SaleResponseDto saleResponse = new SaleResponseDto(
                 newSale.getSaleId(),
                 newSale.getItemName(),
                 newSale.getQuantity(),
-                totalPrice, // Set total price in the "price" field
+                totalPrice,
                 newSale.getSaleDate(),
                 new CustomerResponseDto(
                         newSale.getCustomer().getCustomerId(),
@@ -172,19 +153,11 @@ public class saleService {
         return saleResponse;
     }
 
-    /**
-     * Updates an existing Sale by its ID based on the provided SaleRequestDto.
-     * Throws SaleNotFoundException if the sale is not found in the database.
-     */
-
-    public SaleResponseDto updateSale(Long id, SaleRequestDto saleRequestDto) {
+    public SaleResponseDto updateSale(UUID id, SaleRequestDto saleRequestDto) { // Changed Long to UUID
         logger.info("Entering updateSale method with id: {}", id);
         Sales sale = repository.findById(id)
             .orElseThrow(() -> new SaleNotFoundException("Sale not found with id: " + id));
 
-        /**
-         *  Update customer details
-         */
         Customer customer = customerService.getOrCreateCustomer(
             saleRequestDto.getCustomerName(),
             saleRequestDto.getCustomerPhone(),
@@ -193,9 +166,6 @@ public class saleService {
         );
         sale.setCustomer(customer);
 
-        /**
-         *  Update sale details
-         */
         sale.setItemName(saleRequestDto.getItemName());
         sale.setQuantity(saleRequestDto.getQuantity());
         sale.setPrice(saleRequestDto.getPrice());
@@ -220,11 +190,8 @@ public class saleService {
         logger.info("Exiting updateSale method with sale: {}", saleResponse);
         return saleResponse;
     }
-    /**
-     * Retrieves sales for a specific customer by their ID and converts them into SaleResponseDto objects.
-     * Logs the process and returns the list of sales with mapped customer details.
-     */
-    public List<SaleResponseDto> getSalesByCustomer(Long customerId) {
+
+    public List<SaleResponseDto> getSalesByCustomer(UUID customerId) { // Changed Long to UUID
         logger.info("Entering getSalesByCustomer method with customer id: {}", customerId);
         Customer customer = customerService.getCustomerById(customerId);
         List<SaleResponseDto> salesList = repository.findByCustomer(customer).stream()
@@ -247,12 +214,7 @@ public class saleService {
         return salesList;
     }
     
-    /**
-     * Deletes a sale by its ID.
-     * Throws SaleNotFoundException if the sale is not found.
-     * Logs the process of finding and deleting the sale.
-     */
-    public void deleteSale(Long id) {
+    public void deleteSale(UUID id) { // Changed Long to UUID
         logger.info("Entering deleteSale method with id: {}", id);
         Sales sale = repository.findById(id)
             .orElseThrow(() -> new SaleNotFoundException("Sale not found with id: " + id));
@@ -260,7 +222,8 @@ public class saleService {
         logger.info("Deleted sale with id: {}", id);
         logger.info("Exiting deleteSale method");
     }
-    
+
+
      /* total revenue grouped by item using a custom query.
      * Logs the process and returns a list of item names and their total revenue.
      */

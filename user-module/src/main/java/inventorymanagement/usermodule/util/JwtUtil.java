@@ -19,11 +19,14 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
-    private String secretKey;
+//    @Value("${jwt.secret}")
+//    private String secretKey;
+    
+    private static final String secretkey = "12345678900987654321asdfghjkllkjhgfdsaqwertyuioppoiuytrewq";
+    
 
-    @Value("${jwt.expiration}")
-    private long expiration;
+//    @Value("${jwt.expiration}")
+    private long expiration = 60 * 60 * 1000;
 
     private SecretKey key;
 
@@ -32,7 +35,7 @@ public class JwtUtil {
      */
     @PostConstruct
     public void init() {
-        byte[] decodedKey = Base64.getDecoder().decode(secretKey);
+        byte[] decodedKey = Base64.getDecoder().decode(secretkey);
         this.key = Keys.hmacShaKeyFor(decodedKey);
     }
 

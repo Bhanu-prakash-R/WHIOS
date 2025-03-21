@@ -1,5 +1,7 @@
 package inventorymanagement.stockmodule.dto;
 
+import java.time.LocalDateTime;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,4 +14,5 @@ public class PurchaseDetailsDto {
     private int quantity;
     private double price;
     private String category;
+   private LocalDateTime purchaseTimestamp; 
 }
