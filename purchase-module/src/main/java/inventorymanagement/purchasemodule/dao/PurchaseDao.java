@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import inventorymanagement.purchasemodule.dto.PurchaseMetricsDto;
 import inventorymanagement.purchasemodule.entity.Purchase;
@@ -21,7 +22,7 @@ public interface PurchaseDao extends JpaRepository<Purchase, UUID> {
      * @param vendorId The ID of the vendor.
      * @return A list of Purchase entities associated with the specified vendor ID.
      */
-    List<Purchase> findByVendorId(int vendorId);
+    List<Purchase> findByVendorId(UUID vendorId);
 
     /**
      * Finds purchases by vendor name.
@@ -37,7 +38,7 @@ public interface PurchaseDao extends JpaRepository<Purchase, UUID> {
      * @param itemName The name of the item.
      * @return A list of Purchase entities associated with the specified item name.
      */
-    Optional<Purchase> findByItemName(String itemName);
+    List<Purchase> findByItemName(String itemName);
 
     /**
      * Finds purchases by category.
@@ -69,5 +70,10 @@ public interface PurchaseDao extends JpaRepository<Purchase, UUID> {
     	     + " p.itemName) "
     	     + "FROM Purchase p ORDER BY p.purchaseDate DESC limit 3")
     	List<PurchaseMetricsDto> findRecentPurchases(Pageable pageable);
+    
+    
+    @Query("SELECT p FROM Purchase p WHERE p.itemName = :itemName ORDER BY p.purchaseDate DESC")
+    Optional<Purchase> findLatestPurchaseByItemName(@Param("itemName") String itemName);
+
     
 }

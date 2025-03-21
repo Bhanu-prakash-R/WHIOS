@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.NonNull;
 
+import java.util.UUID;
 
 /**
  * Data Transfer Object (DTO) for handling sale creation requests.
@@ -15,46 +16,53 @@ import lombok.NonNull;
  * (customer ID, item name, quantity, price).
  */
 public class SaleRequestDto {
-	@NotBlank(message = "Customer name cannot be blank")
-	@NonNull
-    private String customerName;
-    
-	@NotBlank(message = "Customer phone cannot be blank")
+
+    private UUID customerId; // Optional field for existing customers
+
+    @NotBlank(message = "Customer name cannot be blank")
     @NonNull
-	@Size(min = 10, max = 15, message = "Customer phone must be between 10 and 15 characters")
+    private String customerName;
+
+    @NotBlank(message = "Customer phone cannot be blank")
+    @NonNull
+    @Size(min = 10, max = 15, message = "Customer phone must be between 10 and 15 characters")
     private String customerPhone;
-    
-	 @NotBlank(message = "Customer email cannot be blank")
-	 @Email(message = "Customer email should be valid")
-	 @NonNull
+
+    @NotBlank(message = "Customer email cannot be blank")
+    @Email(message = "Customer email should be valid")
+    @NonNull
     private String customerEmail;
-    
-	 @NonNull
-	 @NotBlank(message = "Customer address cannot be blank")
-	 @Size(max = 255, message = "Customer address must not exceed 255 characters")
+
+    @NotBlank(message = "Customer address cannot be blank")
+    @NonNull
+    @Size(max = 255, message = "Customer address must not exceed 255 characters")
     private String customerAddress;
-    
-	 
-    
-	 @NotBlank(message = "Item name cannot be blank")
-	 @NonNull 
+
+    @NotBlank(message = "Item name cannot be blank")
+    @NonNull
     private String itemName;
-    
-	 @NotNull(message = "Quantity cannot be null")
-	 @Min(value =0 , message = "Quantity must be at least 0") 
-	 @NonNull
+
+    @NotNull(message = "Quantity cannot be null")
+    @Min(value = 0, message = "Quantity must be at least 0")
+    @NonNull
     private Integer quantity;
-    
-	 
-	 
-	 @NonNull
-	 @Positive(message="Price must be positive")
-	/* @NonNull*/
+
+    @NotNull
+    @Positive(message = "Price must be positive")
+    @NonNull
     private double price;
 
     /**
      * Getters and Setters
      */
+    public UUID getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(UUID customerId) {
+        this.customerId = customerId;
+    }
+
     public String getCustomerName() {
         return customerName;
     }

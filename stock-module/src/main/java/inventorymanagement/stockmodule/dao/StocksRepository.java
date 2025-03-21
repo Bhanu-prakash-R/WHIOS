@@ -32,6 +32,7 @@ public interface StocksRepository extends JpaRepository<Stocks, UUID> {
      * @return Optional containing the stock if found, or empty otherwise.
      */
     Optional<Stocks> findByItemName(String itemName);
+   // Optional<Stocks> findByItemName2(String itemName);
     /**
      * Retrieves the item names and quantities of all stocks.
      *

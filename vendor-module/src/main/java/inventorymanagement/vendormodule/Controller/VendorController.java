@@ -36,17 +36,11 @@ public class VendorController {
      * @return ApiResponse containing the list of all vendors.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<VendorResponseDto>>> getAllVendors() {
+    public ResponseEntity<List<VendorResponseDto>> getAllVendors() {
         logger.info("Fetching all vendors");
         List<VendorResponseDto> vendors = vendorService.getAllVendors();
         return ResponseEntity.ok(
-            new ApiResponse<>(
-                true, 
-                "Vendors retrieved successfully", 
-                vendors, 
-                HttpStatus.OK.value(), 
-                LocalDateTime.now()
-            )
+            vendors
         );
     }
 
@@ -57,8 +51,10 @@ public class VendorController {
      */
     @GetMapping("/names")
     public ResponseEntity<List<String>> getVendorNames() {
+    	System.out.println("hello");
         logger.info("Fetching all vendor names");
         List<String> vendorNames = vendorService.getAllVendorNames();
+        
         return ResponseEntity.ok(vendorNames
             
         );
@@ -71,17 +67,11 @@ public class VendorController {
      * @return ApiResponse containing the vendor details.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<VendorResponseDto>> getVendorById(@PathVariable UUID id) {
+    public ResponseEntity<VendorResponseDto> getVendorById(@PathVariable UUID id) {
         logger.info("Fetching vendor with ID: {}", id);
         VendorResponseDto vendor = vendorService.getVendorById(id);
-        return ResponseEntity.ok(
-            new ApiResponse<>(
-                true, 
-                "Vendor retrieved successfully", 
-                vendor, 
-                HttpStatus.OK.value(), 
-                LocalDateTime.now()
-            )
+        return ResponseEntity.ok(vendor
+            
         );
     }
 

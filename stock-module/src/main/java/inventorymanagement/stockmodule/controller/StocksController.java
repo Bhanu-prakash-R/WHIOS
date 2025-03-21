@@ -4,6 +4,7 @@ import java.util.List;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import inventorymanagement.stockmodule.dto.ItemNameQuantityDto;
 import inventorymanagement.stockmodule.dto.StockDTO;
+import inventorymanagement.stockmodule.entity.Notification;
 import inventorymanagement.stockmodule.exception.InsufficientStockException;
 import inventorymanagement.stockmodule.exception.StockNotFoundException;
 import inventorymanagement.stockmodule.service.StocksService;
@@ -211,12 +213,18 @@ public class StocksController {
      * @return HTTP status: 200 (OK) on success or 500 (ERROR) on failure.
      */
     @GetMapping("/checkLowStock")
-    public ResponseEntity<Void> checkAndNotifyLowStock() {
+    public ResponseEntity<List<String>> checkAndNotifyLowStock() {
         try {
             log.info("Manually triggering low stock notification");
-            stocksService.scheduledLowStockCheck();
+            List<Notification> lowStockNotifications = stocksService.scheduledLowStockCheck();
             log.info("Triggered low stock notification");
-            return new ResponseEntity<>(HttpStatus.OK);
+ 
+            // Extract messages from notifications
+            List<String> notificationMessages = lowStockNotifications.stream()
+                .map(Notification::getMessage)
+                .collect(Collectors.toList());
+ 
+            return new ResponseEntity<>(notificationMessages, HttpStatus.OK);
         } catch (Exception e) {
             log.error("Error triggering low stock notification: {}", e.getMessage(), e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);

@@ -21,11 +21,11 @@ public class JwtService {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
-    @Value("${jwt.secret}")
-    private String secret; // Secret key for signing JWTs
+//    @Value("${jwt.secret}")
+    private String secret = "12345678900987654321asdfghjkllkjhgfdsaqwertyuioppoiuytrewq"; // Secret key for signing JWTs
 
-    @Value("${jwt.expiration}")
-    private long expiration; // JWT expiration time in milliseconds
+//    @Value("${jwt.expiration}")
+    private long expiration = 60 * 60 * 1000; // JWT expiration time in milliseconds
 
     /**
      * Gets the signing key for JWT encryption.
