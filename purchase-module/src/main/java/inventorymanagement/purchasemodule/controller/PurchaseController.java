@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import inventorymanagement.purchasemodule.dto.PurchaseDetailsDto;
 import inventorymanagement.purchasemodule.dto.PurchaseDto;
 import inventorymanagement.purchasemodule.dto.PurchaseMetricsDto;
+import inventorymanagement.purchasemodule.dto.VendorResponseDto;
 import inventorymanagement.purchasemodule.exception.ResourceNotFoundException;
 import inventorymanagement.purchasemodule.service.PurchaseService;
 import jakarta.validation.Valid;
@@ -99,11 +100,16 @@ public class PurchaseController {
      * 
      * @return ResponseEntity containing a list of vendor names and HTTP status OK.
      */
+    @GetMapping("/vendorName")
+    public ResponseEntity<List<VendorResponseDto>> getVendorName(){
+        log.info("Fetching vendor names");
+        List<VendorResponseDto> vendorNames = purchaseService.getAllVendors();
+        return ResponseEntity.ok(vendorNames);
+    }
     @GetMapping("/vendorNames")
     public ResponseEntity<List<String>> getVendorNames(){
-    	log.info("fetching vendor names");
     	List<String> vendorNames=purchaseService.getVendorNames();
-    	 return ResponseEntity.ok(vendorNames);
+    	return  ResponseEntity.ok(vendorNames);
     }
     
     /**

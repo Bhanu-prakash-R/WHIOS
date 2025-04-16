@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository interface for managing Zone entities in the database.
@@ -26,4 +27,6 @@ public interface ZoneRepository extends JpaRepository<Zone, String> { // Using S
      * @return A Long value representing the count of active zones (`isActive = true`).
      */
     Long countByIsActiveTrue();
+
+	Optional<Zone> findByZoneName(String zoneName);
 }

@@ -64,23 +64,21 @@ public class VendorService {
      */
     public VendorResponseDto getVendorById(UUID id) {
         logger.info("Fetching vendor with ID: {}", id);
-        try {
-            Vendor vendor = vendorRepository.findById(id)
-                    .orElseThrow(() -> new VendorNotFoundException("Vendor not found with id: " + id));
-            return new VendorResponseDto(
-                    vendor.getVendorId(),
-                    vendor.getVendorName(),
-                    new ContactDetailsDto(
-                            vendor.getContactDetails().getPhoneNumber(),
-                            vendor.getContactDetails().getEmail(),
-                            vendor.getContactDetails().getAddress()
-                    )
-            );
-        } catch (Exception e) {
-            logger.error("Error fetching vendor by ID: {}", id, e);
-            throw new RuntimeException("Unable to fetch vendor by ID", e);
-        }
+
+        Vendor vendor = vendorRepository.findById(id)
+                .orElseThrow(() -> new VendorNotFoundException("Vendor not found with id: " + id));
+
+        return new VendorResponseDto(
+                vendor.getVendorId(),
+                vendor.getVendorName(),
+                new ContactDetailsDto(
+                        vendor.getContactDetails().getPhoneNumber(),
+                        vendor.getContactDetails().getEmail(),
+                        vendor.getContactDetails().getAddress()
+                )
+        );
     }
+
 
     /**
      * Saves a new vendor to the database.
@@ -167,14 +165,10 @@ public class VendorService {
      */
     public void deleteVendor(UUID id) {
         logger.info("Deleting vendor with ID: {}", id);
-        try {
-            Vendor vendor = vendorRepository.findById(id)
-                    .orElseThrow(() -> new VendorNotFoundException("Vendor not found with id: " + id));
-            vendorRepository.delete(vendor);
-        } catch (Exception e) {
-            logger.error("Error deleting vendor with ID: {}", id, e);
-            throw new RuntimeException("Unable to delete vendor", e);
-        }
+        Vendor vendor = vendorRepository.findById(id)
+                .orElseThrow(() -> new VendorNotFoundException("Vendor not found with id: " + id));
+        vendorRepository.delete(vendor);
+        logger.info("Vendor with ID: {} has been successfully deleted.", id);
     }
 
     /**
@@ -186,25 +180,26 @@ public class VendorService {
      */
     public List<VendorResponseDto> searchVendorsByName(String vendorName) {
         logger.info("Searching vendors by name: {}", vendorName);
-        try {
-            List<Vendor> vendors = vendorRepository.findByVendorNameContaining(vendorName);
-            if (vendors.isEmpty()) {
-                throw new VendorNotFoundException("No vendors found with name containing: " + vendorName);
-            }
-            return vendors.stream()
-                    .map(vendor -> new VendorResponseDto(
-                            vendor.getVendorId(),
-                            vendor.getVendorName(),
-                            new ContactDetailsDto(
-                                    vendor.getContactDetails().getPhoneNumber(),
-                                    vendor.getContactDetails().getEmail(),
-                                    vendor.getContactDetails().getAddress()
-                            )
-                    )).collect(Collectors.toList());
-        } catch (Exception e) {
-            logger.error("Error searching vendors by name: {}", vendorName, e);
-            throw new RuntimeException("Unable to search vendors", e);
+
+        List<Vendor> vendors = vendorRepository.findByVendorNameContaining(vendorName);
+
+        // Throw exception if no vendors are found
+        if (vendors.isEmpty()) {
+            logger.warn("No vendors found with name containing: {}", vendorName);
+            throw new VendorNotFoundException("No vendors found with name containing: " + vendorName);
         }
+
+        // Convert the list of Vendor entities to VendorResponseDto
+        return vendors.stream()
+                .map(vendor -> new VendorResponseDto(
+                        vendor.getVendorId(),
+                        vendor.getVendorName(),
+                        new ContactDetailsDto(
+                                vendor.getContactDetails().getPhoneNumber(),
+                                vendor.getContactDetails().getEmail(),
+                                vendor.getContactDetails().getAddress()
+                        )
+                )).collect(Collectors.toList());
     }
 
     /**

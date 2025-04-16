@@ -20,6 +20,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/zones")
+@CrossOrigin(origins = "http://localhost:3001")
 public class ZoneController {
     
     // Logger instance for logging important events.
@@ -34,7 +35,7 @@ public class ZoneController {
      * 
      * @return ResponseEntity containing all ZoneDTOs wrapped in an ApiResponse.
      */
-    @GetMapping
+    @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<ZoneDTO>>> getAllZones() {
         logger.info("Fetching all zones");
         List<ZoneDTO> zones = zoneService.getAllZones();

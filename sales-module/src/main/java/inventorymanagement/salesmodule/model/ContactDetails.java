@@ -1,5 +1,5 @@
 package inventorymanagement.salesmodule.model;
-import org.antlr.v4.runtime.misc.NotNull;
+//import org.antlr.v4.runtime.misc.NotNull;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

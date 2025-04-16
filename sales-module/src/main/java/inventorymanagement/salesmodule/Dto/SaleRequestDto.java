@@ -43,8 +43,9 @@ public class SaleRequestDto {
     private String itemName;
 
     @NotNull(message = "Quantity cannot be null")
-    @Min(value = 0, message = "Quantity must be at least 0")
+    @Min(value = 1, message = "Quantity must be at least 1")
     @NonNull
+    @Positive(message="quanity must be positive")
     private Integer quantity;
 
     @NotNull

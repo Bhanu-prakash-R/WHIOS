@@ -28,11 +28,13 @@ public class customerService {
             ContactDetails contactDetails = existingCustomer.getContactDetails();
             if (contactDetails == null) {
                 contactDetails = new ContactDetails();
-                existingCustomer.setContactDetails(contactDetails);
+                
             }
             contactDetails.setPhoneNumber(phone);
             contactDetails.setEmail(email);
+            
             contactDetails.setAddress(address);
+            existingCustomer.setContactDetails(contactDetails);
             return customerRepository.save(existingCustomer);
         }
 
@@ -81,7 +83,7 @@ public class customerService {
     /**
      * Updates an existing customer's details, including name and contact information.
      */
-    public Customer updateCustomer(UUID id, String name, String phone, String email, String address) { // Changed Long to UUID
+    public Customer updateCustomer(UUID id, String name, String phone, String email, String address) { 
         try {
             Customer existingCustomer = customerRepository.findById(id)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + id));
@@ -110,7 +112,7 @@ public class customerService {
     /**
      * Deletes a customer by their ID.
      */
-    public void deleteCustomer(UUID id) { // Changed Long to UUID
+    public void deleteCustomer(UUID id) { 
         try {
             Customer existingCustomer = customerRepository.findById(id)
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + id));

@@ -25,5 +25,6 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
      */
 	    List<Notification> findByStocks(Stocks stocks);
 	    Optional<Notification> findByStocksAndMessage(Stocks stocks, String message);
+		void deleteByStocks_StockId(UUID stockId);
 	
 }

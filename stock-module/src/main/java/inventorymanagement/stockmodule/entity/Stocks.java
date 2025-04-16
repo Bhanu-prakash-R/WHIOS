@@ -73,6 +73,8 @@ public class Stocks {
    
 
     private Long purchaseId;
+    @Column(nullable = true)
+    private LocalDateTime lastRestockedAt;
 
     /*@OneToMany(mappedBy = "stocks", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Set<Notification> notifications = new HashSet<>();*/

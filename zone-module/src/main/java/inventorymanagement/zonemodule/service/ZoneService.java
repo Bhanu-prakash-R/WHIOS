@@ -2,6 +2,7 @@ package inventorymanagement.zonemodule.service;
 
 import inventorymanagement.zonemodule.dto.ZoneDTO;
 import inventorymanagement.zonemodule.entity.Zone;
+import inventorymanagement.zonemodule.exception.ZoneAlreadyExistsException;
 import inventorymanagement.zonemodule.exception.ZoneNotFoundException;
 import inventorymanagement.zonemodule.repository.ZoneRepository;
 import org.slf4j.Logger;
@@ -9,7 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -72,10 +75,13 @@ public class ZoneService {
         }
         List<String> activeZoneNames = activeZones.stream()
                 .map(Zone::getZoneName)
+                .collect(Collectors.toCollection(LinkedHashSet::new)) // Use LinkedHashSet to retain insertion order and avoid duplicates
+                .stream()
                 .collect(Collectors.toList());
         logger.info("Exiting getNamesOfActiveZones() with {} active zone names found.", activeZoneNames.size());
         return activeZoneNames;
     }
+
 
     /**
      * Counts the number of active zones.
@@ -142,12 +148,23 @@ public class ZoneService {
      */
     public ZoneDTO createZone(ZoneDTO zoneDTO) {
         logger.info("Entering createZone()");
+        
+        // Check if a zone with the same name already exists
+        Optional<Zone> existingZone = zoneRepository.findByZoneName(zoneDTO.getZoneName());
+        if (existingZone.isPresent()) {
+            logger.warn("Zone with name {} already exists.", zoneDTO.getZoneName());
+            throw new ZoneAlreadyExistsException("Zone with the name " + zoneDTO.getZoneName() + " already exists.");
+        }
+        
+        // Proceed with saving if no duplicate is found
         Zone zone = convertToEntity(zoneDTO);
         Zone savedZone = zoneRepository.save(zone);
         ZoneDTO savedZoneDTO = convertToDTO(savedZone);
+        
         logger.info("Exiting createZone() with created zone: {}", savedZoneDTO);
         return savedZoneDTO;
     }
+
 
     /**
      * Updates an existing zone.

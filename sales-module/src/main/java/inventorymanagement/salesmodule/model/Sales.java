@@ -29,7 +29,7 @@ public class Sales {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO) // Generate UUID automatically
     @Column(name = "sale_id", nullable = false, updatable = false)
-    private UUID saleId; // Changed from Long to UUID
+    private UUID saleId; 
 
     @Column(name = "item_name", nullable = false)
     private String itemName;
@@ -46,7 +46,7 @@ public class Sales {
     private LocalDateTime saleDate;
 
     @ManyToOne
-    @NotNull
+    
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 

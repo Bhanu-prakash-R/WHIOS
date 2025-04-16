@@ -14,5 +14,6 @@ public class PurchaseDetailsDto {
     private int quantity;
     private double price;
     private String category;
-   private LocalDateTime purchaseTimestamp; 
+   private LocalDateTime purchaseDate;
+   
 }

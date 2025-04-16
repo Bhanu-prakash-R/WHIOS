@@ -10,6 +10,8 @@ import inventorymanagement.purchasemodule.dto.PurchaseDto;
 import inventorymanagement.purchasemodule.dto.PurchaseMetricsDto;
 import inventorymanagement.purchasemodule.entity.Purchase;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,40 +61,40 @@ public class PurchaseService {
      */
     public PurchaseDto savePurchase(PurchaseDto purchaseDto) {
         log.info("Starting the creation of a new purchase for item: {}, vendor: {}", purchaseDto.getItemName(), purchaseDto.getVendorName());
-
+ 
         // Step 1: Fetch all vendors from the Vendor module
         List<VendorResponseDto> vendors = vendorFeignClient.getAllVendors();
         log.info("Fetched {} vendors from the Vendor module.", vendors.size());
-
+ 
         // Step 2: Validate vendorId and vendorName
         vendors.stream()
             .filter(vendor -> vendor.getVendorId().equals(purchaseDto.getVendorId())
                     && vendor.getVendorName().equalsIgnoreCase(purchaseDto.getVendorName()))
             .findFirst()
             .orElseThrow(() -> {
-                log.error("Invalid vendorId: {} or vendorName: {}. Vendor not found in the Vendor module.",
-                          purchaseDto.getVendorId(), purchaseDto.getVendorName());
-                return new IllegalArgumentException("Invalid vendor: Vendor ID '" + purchaseDto.getVendorId() +
-                                                    "' and Vendor Name '" + purchaseDto.getVendorName() + "' do not match.");
-            });
-
-        log.info("Vendor '{}' with ID '{}' is valid. Proceeding with the purchase creation.",
-                 purchaseDto.getVendorName(), purchaseDto.getVendorId());
-
+            	log.error("Invalid vendorId: {} or vendorName: {}. Vendor not found in the Vendor module.",
+                        purchaseDto.getVendorId(), purchaseDto.getVendorName());
+              return new IllegalArgumentException("Invalid vendor: Vendor ID '" + purchaseDto.getVendorId() +
+                                                  "' and Vendor Name '" + purchaseDto.getVendorName() + "' do not match.");
+          });
+ 
+      log.info("Vendor '{}' with ID '{}' is valid. Proceeding with the purchase creation.",
+               purchaseDto.getVendorName(), purchaseDto.getVendorId());
+ 
         // Step 3: Convert DTO to entity
         Purchase purchase = convertToEntity(purchaseDto);
         purchase.setVendorId(purchaseDto.getVendorId()); // Set the validated vendorId in the entity
-
+ 
         // Step 4: Save the purchase in the database
         Purchase savedPurchase = purchaseDao.save(purchase);
-
+ 
         // Step 5: Convert the saved purchase entity to a DTO
         PurchaseDto responseDto = convertToDto(savedPurchase);
-
+ 
         // Step 6: Replace the price with the calculated total price (price * quantity)
         responseDto.setPrice(savedPurchase.getPrice() * savedPurchase.getQuantity());
         log.info("Purchase saved with total price: {}", responseDto.getPrice());
-
+ 
         // Step 7: Return the response DTO
         return responseDto;
     }
@@ -149,16 +151,20 @@ public class PurchaseService {
      * Retrieves the names of all vendors by invoking the vendor module via FeignClient.
      * 
      * @return List of vendor names as strings.
-     */
-    public List<String> getVendorNames(){
-    	return vendorFeignClient.getVendorNames();
+    public List<VendorResponseDto> getAllVendors() {
+        return vendorFeignClient.getAllVendors();
+    }
+    public List<VendorResponseDto> getAllVendors() {
+        return vendorFeignClient.getAllVendors();
     }
     
-    /**
      * Retrieves distinct item names from all purchase records.
      * 
      * @return List of unique item names as strings.
      */
+    public List<VendorResponseDto> getAllVendors() {
+        return vendorFeignClient.getAllVendors();
+    }
     public List<String> getItemNames() {
         // Fetch all purchase records from the repository
         List<Purchase> purchases = purchaseDao.findAll();
@@ -168,6 +174,10 @@ public class PurchaseService {
                 .map(Purchase::getItemName)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+    public List<String> getVendorNames(){
+    	log.info("Fetching all vendor names");
+    	return vendorFeignClient.getVendorNames();
     }
     
     /**
@@ -182,19 +192,28 @@ public class PurchaseService {
     }
 
     public PurchaseDetailsDto getLimitedPurchaseDetailsByItemName(String itemName) {
-        List<Purchase> purchase = purchaseDao.findByItemName(itemName);
-        if (purchase.isEmpty()) {
+        List<Purchase> purchases = purchaseDao.findByItemName(itemName);
+
+        if (purchases.isEmpty()) {
             log.error("No purchase found for item '{}'", itemName);
             throw new IllegalArgumentException("No purchase found for item: " + itemName);
         }
-        Purchase p = purchase.get(0);
+
+        // Find the latest purchase based on purchaseDate
+        Purchase latestPurchase = purchases.stream()
+            .max(Comparator.comparing(Purchase::getPurchaseDate)) // Sort by purchaseDate
+            .orElseThrow(() -> new IllegalArgumentException("Unable to find the latest purchase for item: " + itemName));
+
         return new PurchaseDetailsDto(
-            p.getVendorName(),
-            p.getQuantity(),
-            p.getPrice(),
-            p.getCategory()
+            latestPurchase.getVendorName(),
+            latestPurchase.getQuantity(),
+            latestPurchase.getPrice(),
+            latestPurchase.getCategory(),
+            latestPurchase.getPurchaseDate() // Include purchaseDate in the DTO
         );
     }
+
+
 
 
 }

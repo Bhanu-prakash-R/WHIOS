@@ -81,7 +81,8 @@ public class StocksService {
             stock.getZoneName(),
             stock.getVendorName(),
             notificationMessages,
-            stock.getCreatedAt()
+            stock.getCreatedAt(),
+            stock.getLastRestockedAt()
         );
     }
 
@@ -119,66 +120,68 @@ public class StocksService {
      */
     @Transactional
     public StockDTO createStock(StockDTO stockDTO) {
-        log.info("Creating or updating stock for itemName: {}, zoneName: {}", stockDTO.getItemName(), stockDTO.getZoneName());
+        log.info("Processing stock for itemName: {}, zoneName: {}", stockDTO.getItemName(), stockDTO.getZoneName());
 
-        // Validate item exists in the Purchase module
-        log.info("Validating if item '{}' exists in Purchase module...", stockDTO.getItemName());
-        List<String> purchasedItemNames = purchaseFeignClient.getItemNames();
-
-        if (!purchasedItemNames.contains(stockDTO.getItemName())) {
-            log.error("Item '{}' not found in Purchase module. Cannot add to stock.", stockDTO.getItemName());
-            throw new IllegalArgumentException("Item not found in Purchase module: " + stockDTO.getItemName());
-        }
-
-        // Fetch purchase details for autofill
-        PurchaseDetailsDto purchaseDetails;
+        // Fetch the latest purchase details using PurchaseFeignClient
+        PurchaseDetailsDto latestPurchase;
         try {
-            log.info("Fetching purchase details for itemName: {}", stockDTO.getItemName());
-            purchaseDetails = purchaseFeignClient.getLimitedPurchaseDetails(stockDTO.getItemName());
-            if (purchaseDetails == null) {
-                log.error("No purchase details found for itemName: {}", stockDTO.getItemName());
-                throw new IllegalArgumentException("Purchase details not available for the given item name.");
+            log.info("Fetching latest purchase details for itemName: {}", stockDTO.getItemName());
+            latestPurchase = purchaseFeignClient.getLimitedPurchaseDetails(stockDTO.getItemName());
+
+            if (latestPurchase == null || latestPurchase.getPurchaseDate() == null) {
+                log.error("Invalid or missing purchase details for item '{}'", stockDTO.getItemName());
+                throw new IllegalArgumentException("No valid purchase details available for item: " + stockDTO.getItemName());
             }
+
+            log.info("Latest purchase fetched: {}", latestPurchase);
         } catch (Exception e) {
             log.error("Error fetching purchase details for item '{}': {}", stockDTO.getItemName(), e.getMessage());
             throw new IllegalArgumentException("Unable to fetch purchase details for item: " + stockDTO.getItemName());
         }
 
-        // Autofill stockDTO fields with data from the Purchase module
-        stockDTO.setVendorName(purchaseDetails.getVendorName());
-        stockDTO.setCategory(purchaseDetails.getCategory());
-        stockDTO.setQuantity(purchaseDetails.getQuantity());
-        stockDTO.setPrice(purchaseDetails.getPrice());
+        // Check if the stock already exists for this item
+        Optional<Stocks> optionalStock = stockRepository.findByItemName(stockDTO.getItemName());
 
-        // Fetch all matching stock entries
-        log.info("Checking if item '{}' already exists in stock...", stockDTO.getItemName());
-        Optional<Stocks> stocksList = stockRepository.findByItemName(stockDTO.getItemName());
+        if (optionalStock.isPresent()) {
+            Stocks existingStock = optionalStock.get();
 
-        Stocks stock;
-        if (stocksList.isEmpty()) {
-            // Create new stock entry if no match found
-            stock = convertToEntity(stockDTO);
-            log.info("New stock entry created for itemName: {} with quantity: {}", stock.getItemName(), stock.getQuantity());
-        } else {
-            // Handle multiple results by selecting the first one (or custom logic)
-            stock = stocksList.get(); // Use the first record for simplicity
-            stock.setQuantity(stock.getQuantity() + stockDTO.getQuantity()); // Update quantity
-            stock.setPrice(stock.getPrice() + (purchaseDetails.getPrice() * purchaseDetails.getQuantity())); // Update total price
-            stock.setVendorName(purchaseDetails.getVendorName());
-            stock.setCategory(purchaseDetails.getCategory());
-            log.info("Stock updated for itemName: {}. New quantity: {}, New price: {}", stock.getItemName(), stock.getQuantity(), stock.getPrice());
+            // Validate if the latest purchase is newer than the last restocked entry
+            if (existingStock.getLastRestockedAt() != null && 
+                latestPurchase.getPurchaseDate().isBefore(existingStock.getLastRestockedAt())) {
+                log.info("No new purchase found for item '{}'. Skipping restock.", stockDTO.getItemName());
+                throw new IllegalArgumentException("No new purchase available for item: " + stockDTO.getItemName());
+            }
+
+            // Update existing stock with autofilled details from the purchase module
+            existingStock.setQuantity(existingStock.getQuantity() + latestPurchase.getQuantity());
+            existingStock.setPrice(existingStock.getPrice() + (latestPurchase.getPrice() * latestPurchase.getQuantity()));
+            existingStock.setCategory(latestPurchase.getCategory());
+            existingStock.setVendorName(latestPurchase.getVendorName());
+            existingStock.setLastRestockedAt(latestPurchase.getPurchaseDate()); // Update the restocked timestamp
+            stockRepository.saveAndFlush(existingStock);
+
+            log.info("Stock updated successfully for itemName: {}. New quantity: {}, New price: {}", 
+                     existingStock.getItemName(), existingStock.getQuantity(), existingStock.getPrice());
+            return convertToDTO(existingStock);
         }
 
-        // Save the stock and flush to ensure persistence
-        stock = stockRepository.saveAndFlush(stock);
+        // Create a new stock entry if it doesn't already exist
+        Stocks newStock = new Stocks();
+        newStock.setStockId(UUID.randomUUID());
+        
+        newStock.setItemName(stockDTO.getItemName());
+        newStock.setZoneName(stockDTO.getZoneName());
+        
+        newStock.setQuantity(latestPurchase.getQuantity()); // Autofill quantity
+        newStock.setPrice(latestPurchase.getPrice() * latestPurchase.getQuantity()); // Autofill price
+        newStock.setCategory(latestPurchase.getCategory()); // Autofill category
+        newStock.setVendorName(latestPurchase.getVendorName()); // Autofill vendor name
+        newStock.setLastRestockedAt(latestPurchase.getPurchaseDate()); // Set restocked timestamp
+        stockRepository.saveAndFlush(newStock);
 
-        // Convert the stock entity to a DTO for the response
-        StockDTO responseDTO = convertToDTO(stock);
-        responseDTO.setPrice(stock.getPrice()); // Total price
-        responseDTO.setQuantity(stock.getQuantity());
-        log.info("Stock created/updated successfully for itemName: {} with total price: {}", stockDTO.getItemName(), responseDTO.getPrice());
-
-        return responseDTO;
+        log.info("New stock entry created for itemName: {} with quantity: {}", 
+                 newStock.getItemName(), newStock.getQuantity());
+        return convertToDTO(newStock);
     }
 
     // 2. Display All Stocks
@@ -195,7 +198,11 @@ public class StocksService {
             List<Stocks> stocks = stockRepository.findAll();
             for (Stocks stock : stocks) {
                 synchronized (stock) {
-                    stockDTOs.add(convertToDTO(stock));
+                    // Convert entity to DTO and calculate total price
+                    StockDTO stockDTO = convertToDTO(stock);
+                    double totalPrice = stock.getQuantity() * stock.getPrice(); // Calculate total price
+                    stockDTO.setPrice(totalPrice); // Update price in DTO to reflect total price
+                    stockDTOs.add(stockDTO);
                     log.info("Initialized and added stock with ID: {}", stock.getStockId());
                 }
             }
@@ -206,6 +213,7 @@ public class StocksService {
         }
         return stockDTOs;
     }
+
 
     // 3. Get Stock by ID
     /**
@@ -261,18 +269,28 @@ public class StocksService {
     * @param stockDTO The DTO containing the updated stock details.
     * @throws StockNotFoundException If no stock is found for the given ID.
     */
+//    @Transactional
+//    public void removeItem(UUID stockId, int quantity) throws StockNotFoundException {
+//        log.info("Removing item with stock ID: {} by quantity: {}", stockId, quantity);
+//        Stocks stock = stockRepository.findById(stockId)
+//                .orElseThrow(() -> new StockNotFoundException("Stock not found for ID: " + stockId));
+//        if (stock.getQuantity() < quantity) {
+//            throw new IllegalArgumentException("Insufficient stock for item: " + stockId);
+//        }
+//        stock.setQuantity(stock.getQuantity() - quantity);
+//        stockRepository.save(stock);
+//    }
+    
     @Transactional
-    public void removeItem(UUID stockId, int quantity) throws StockNotFoundException {
-        log.info("Removing item with stock ID: {} by quantity: {}", stockId, quantity);
-        Stocks stock = stockRepository.findById(stockId)
-                .orElseThrow(() -> new StockNotFoundException("Stock not found for ID: " + stockId));
-        if (stock.getQuantity() < quantity) {
-            throw new IllegalArgumentException("Insufficient stock for item: " + stockId);
+    public void deleteStockById(UUID stockId) throws StockNotFoundException {
+        log.info("Deleting stock with ID: {}", stockId);
+        if (!stockRepository.existsById(stockId)) {
+            throw new StockNotFoundException("Stock not found for ID: " + stockId);
         }
-        stock.setQuantity(stock.getQuantity() - quantity);
-        stockRepository.save(stock);
+        notificationRepository.deleteByStocks_StockId(stockId); //Delete notifications first.
+        stockRepository.deleteById(stockId);
+        log.info("Stock with ID: {} deleted successfully.", stockId);
     }
-
     // 6. Restock Item
     /**
      * Restocks an item by increasing its quantity.
@@ -376,20 +394,26 @@ public class StocksService {
      */
     
     @Transactional
-    public void updateStockQuantity(String itemName, int quantity) {
-        Optional<Stocks> stockItemOptional = stockRepository.findByItemName(itemName);
-        if (stockItemOptional.isPresent()) {
-            Stocks stockItem = stockItemOptional.get();
-            if (stockItem.getQuantity() >= quantity) {
-                stockItem.setQuantity(stockItem.getQuantity() - quantity);
-                stockRepository.save(stockItem);
-            } else {
-                throw new RuntimeException("Insufficient stock for item: " + itemName);
-            }
-        } else {
-            throw new RuntimeException("Stock item not found: " + itemName);
+    public void updateStockDetails(String itemName, int quantity, double price) {
+        Optional<Stocks> stockOptional = stockRepository.findByItemName(itemName);
+
+        if (stockOptional.isEmpty()) {
+            throw new IllegalArgumentException("Stock not found for item: " + itemName);
         }
+
+        Stocks stock = stockOptional.get();
+
+        // Update quantity and price
+        stock.setQuantity(quantity);
+        stock.setPrice(price);
+
+        // Persist changes
+        stockRepository.saveAndFlush(stock);
+
+        log.info("Updated stock for item '{}' with new quantity: {} and new price: {}", itemName, quantity, price);
     }
+
+
     // 8. Get All Stock Names
     /**
      * Provides utility methods for retrieving stock, vendor, zone, and purchase details:
@@ -463,6 +487,32 @@ public class StocksService {
 
         return stockMetrics;
     }
+    
+    @Transactional(readOnly = true)
+    public StockDTO getStockDetails(String itemName) {
+        log.info("Fetching stock details for item: {}", itemName);
+
+        // Fetch stock from the database
+        Optional<Stocks> stockOptional = stockRepository.findByItemName(itemName);
+
+        // Handle case if the item is not found
+        if (stockOptional.isEmpty()) {
+            log.error("Stock not found for item: {}", itemName);
+            throw new IllegalArgumentException("Stock not found for item: " + itemName);
+        }
+
+        // Map the stock entity to StockDTO
+        Stocks stock = stockOptional.get();
+        StockDTO stockDTO = new StockDTO();
+        stockDTO.setItemName(stock.getItemName());
+        stockDTO.setQuantity(stock.getQuantity());
+        stockDTO.setPrice(stock.getPrice());
+        log.info("Fetched stock details successfully for item: {}", itemName);
+
+        return stockDTO;
+    }
+   
+
 
     /*public List<Map<String, Object>> getGraphMetrics() {
         List<Object[]> data = stockRepository.findItemNameAndQuantity();

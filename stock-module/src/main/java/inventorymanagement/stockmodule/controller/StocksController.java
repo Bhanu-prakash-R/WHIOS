@@ -68,6 +68,22 @@ public class StocksController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    
+    @GetMapping("/{stockId}")
+    public ResponseEntity<StockDTO> getStockById(@PathVariable UUID stockId) {
+        log.info("Received request to get stock by ID: {}", stockId);
+        try {
+            StockDTO stockDTO = stocksService.getStockById(stockId);
+            log.info("Successfully fetched stock with ID: {}", stockId);
+            return new ResponseEntity<>(stockDTO, HttpStatus.OK);
+        } catch (StockNotFoundException e) {
+            log.error("Stock not found for ID: {}", stockId, e);
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            log.error("An unexpected error occurred while fetching stock with ID: {}", stockId, e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     // 2. Display All Stocks
     /**
@@ -145,24 +161,28 @@ public class StocksController {
      * @param quantity Quantity to remove.
      * @return HTTP status: 200 (OK), 404 (NOT_FOUND), 400 (BAD_REQUEST), or 500 (ERROR).
      */
-    @DeleteMapping("/remove/{stockId}/{quantity}")
-    public ResponseEntity<Void> removeItem(@PathVariable UUID stockId, @PathVariable int quantity) {
-        try {
-            log.info("Removing item with stock ID: {} by quantity: {}", stockId, quantity);
-            stocksService.removeItem(stockId, quantity);
-            log.info("Removed item with stock ID: {}", stockId);
-            return new ResponseEntity<>(HttpStatus.OK);
-        } catch (StockNotFoundException e) {
-            log.error("Stock not found: {}", e.getMessage(), e);
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        } catch (InsufficientStockException e) {
-            log.error("Insufficient stock: {}", e.getMessage(), e);
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        } catch (Exception e) {
-            log.error("Error removing item: {}", e.getMessage(), e);
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
+//    @DeleteMapping("/remove/{stockId}/{quantity}")
+//    public ResponseEntity<Void> removeItem(@PathVariable UUID stockId, @PathVariable int quantity) {
+//        try {
+//            log.info("Removing item with stock ID: {} by quantity: {}", stockId, quantity);
+//            stocksService.removeItem(stockId, quantity);
+//            log.info("Removed item with stock ID: {}", stockId);
+//            return new ResponseEntity<>(HttpStatus.OK);
+//        } catch (StockNotFoundException e) {
+//            log.error("Stock not found: {}", e.getMessage(), e);
+//            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+//        } catch (InsufficientStockException e) {
+//            log.error("Insufficient stock: {}", e.getMessage(), e);
+//            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+//        } catch (Exception e) {
+//            log.error("Error removing item: {}", e.getMessage(), e);
+//            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+//        }
+//    }
+    
+    
+    
+    
 
     // 5. Restock Item
     /**
@@ -187,7 +207,15 @@ public class StocksController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
+    @DeleteMapping("/{stockId}")
+    public ResponseEntity<Void> deleteStock(@PathVariable UUID stockId) {
+        try {
+            stocksService.deleteStockById(stockId);
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } catch (StockNotFoundException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
     // 6. Check and Notify Low Stock
    /* @GetMapping("/checkAndNotify/{stockId}")
     public ResponseEntity<StockDTO> checkAndNotifyStock(@PathVariable UUID stockId) {
@@ -245,6 +273,22 @@ public class StocksController {
         return ResponseEntity.ok(isAvailable);
     }
     
+    @GetMapping("/details")
+    public ResponseEntity<StockDTO> getStockDetails(@RequestParam String itemName) {
+        log.info("Request received to fetch stock details for item: {}", itemName);
+
+        try {
+            StockDTO stockDTO = stocksService.getStockDetails(itemName);
+            return ResponseEntity.ok(stockDTO);
+        } catch (IllegalArgumentException e) {
+            log.error("Error fetching stock details: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Unexpected error occurred: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     /**
      * Updates the quantity of a stock item.
      *
@@ -252,11 +296,22 @@ public class StocksController {
      * @param quantity New quantity to update.
      * @return HTTP status: 204 (NO_CONTENT) on successful update.
      */
-    @PutMapping("/update-quantity")
-    public ResponseEntity<Void> updateStockQuantity(@RequestParam String itemName, @RequestParam int quantity) {
-        stocksService.updateStockQuantity(itemName, quantity);
-        return ResponseEntity.noContent().build();
+    @PutMapping("/updateDetails")
+    public ResponseEntity<String> updateStockDetails(
+            @RequestParam String itemName, 
+            @RequestParam int quantity, 
+            @RequestParam double price) {
+        try {
+            stocksService.updateStockDetails(itemName, quantity, price);
+            return ResponseEntity.ok("Stock details updated successfully for item: " + itemName);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            log.error("Error updating stock details for item '{}': {}", itemName, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update stock details");
+        }
     }
+
 
     // 8. Fetch Only Stock Names
     /**

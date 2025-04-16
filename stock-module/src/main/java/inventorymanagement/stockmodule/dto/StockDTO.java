@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.UUID;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -45,6 +44,7 @@ public class StockDTO {
      */
     @Min(value = 0, message = "Price must be at least 0")
     private double price;
+
     /**
      * Zone name where the stock is located.
      * Mandatory for accurate location information.
@@ -68,8 +68,14 @@ public class StockDTO {
      */
     private LocalDateTime createdAt;
 
+    /**
+     * Timestamp for when the stock was last restocked.
+     * This is crucial for determining if a new purchase is available for restocking.
+     */
+    private LocalDateTime lastRestockedAt;
+
     // Full constructor
-    public StockDTO(UUID stockId, String itemName, int quantity, String category, double price, String zoneName, String vendorName, List<String> notificationMessages, LocalDateTime createdAt) {
+    public StockDTO(UUID stockId, String itemName, int quantity, String category, double price, String zoneName, String vendorName, List<String> notificationMessages, LocalDateTime createdAt, LocalDateTime lastRestockedAt) {
         this.stockId = stockId;
         this.itemName = itemName;
         this.quantity = quantity;
@@ -79,6 +85,7 @@ public class StockDTO {
         this.vendorName = vendorName;
         this.notificationMessages = notificationMessages;
         this.createdAt = createdAt;
+        this.lastRestockedAt = lastRestockedAt;
     }
 
     // Constructor for itemName and quantity only

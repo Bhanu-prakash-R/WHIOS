@@ -44,7 +44,7 @@ public class Purchase {
      * Identifier for the vendor.
      * Cannot be null.
      */
-    @Column(nullable = false)
+    @Column
     private UUID vendorId;
  
     /**

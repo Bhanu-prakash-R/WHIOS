@@ -46,6 +46,7 @@ public interface StocksRepository extends JpaRepository<Stocks, UUID> {
     /*@Query("SELECT s.itemName, SUM(s.quantity) FROM Stock s GROUP BY s.itemName")
     List<Object[]> findItemNameAndQuantity();*/
 
-    
+    public Optional<Stocks> findByItemNameAndPurchaseId(String itemName, Long purchaseId);
+    public Optional<Stocks> findByItemNameAndZoneName(String itemName, String zoneName);
    // List<Stocks> findByQuantityLess(int quantity);
 }

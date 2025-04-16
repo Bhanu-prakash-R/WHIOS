@@ -1,5 +1,7 @@
 package inventorymanagement.purchasemodule.dto;
 
+import java.time.LocalDateTime;
+
 //package inventorymanagement.purchasemodule.dto;
 
 import lombok.AllArgsConstructor;
@@ -14,4 +16,5 @@ public class PurchaseDetailsDto {
     private int quantity;
     private double price;
     private String category;
+    private LocalDateTime purchaseDate;
 }
