@@ -27,21 +27,14 @@ public class MetricsController {
     @Autowired
     private MetricsService metricsService;
 
-    // Endpoint to fetch recent sales data
+ // Endpoint to fetch recent sales data
     @GetMapping("/recent-sales")
     public ResponseEntity<List<PerformanceSalesDto>> getRecentSales() {
         logger.info("Received request to fetch recent sales");
 
-        List<PerformanceSalesDto> recentSales;
-
-        try {
-            recentSales = metricsService.getRecentSalesForDashboard();
-            logger.info("Successfully fetched recent sales data for the dashboard");
-        } catch (Exception e) {
-            logger.error("Error while processing recent sales request: {}", e.getMessage());
-            return ResponseEntity.status(500).body(null);
-        }
-
+        List<PerformanceSalesDto> recentSales = metricsService.getRecentSalesForDashboard();
+        logger.info("Successfully fetched recent sales data for the dashboard");
+        
         logger.info("Sending recent sales response to client");
         return ResponseEntity.ok(recentSales);
     }
@@ -51,30 +44,32 @@ public class MetricsController {
     public ResponseEntity<List<Object[]>> getTotalRevenues() {
         logger.info("Received request to fetch total revenue per item");
 
-        List<Object[]> totalRevenues;
-
-        try {
-            totalRevenues = metricsService.getTotalRevenueForDashboard();
-            logger.info("Successfully fetched total revenue data for the dashboard");
-        } catch (Exception e) {
-            logger.error("Error while processing total revenue request: {}", e.getMessage());
-            return ResponseEntity.status(500).body(null);
-        }
+        List<Object[]> totalRevenues = metricsService.getTotalRevenueForDashboard();
+        logger.info("Successfully fetched total revenue data for the dashboard");
 
         logger.info("Sending total revenue response to client");
         return ResponseEntity.ok(totalRevenues);
     }
+
     @GetMapping("/stock")
     public ResponseEntity<List<PerformanceItemDto>> getStockMetrics() {
+        logger.info("Received request to fetch stock metrics");
+
         List<PerformanceItemDto> stockMetrics = metricsService.getStockMetrics();
+        logger.info("Successfully fetched stock metrics");
+
+        logger.info("Sending stock metrics response to client");
         return ResponseEntity.ok(stockMetrics);
     }
-    
+
     @GetMapping("/recent-purchases")
     public ResponseEntity<List<PerformancePurchaseDto>> getRecentPurchases() {
-        // Fetch recent purchases via service
+        logger.info("Received request to fetch recent purchases");
+
         List<PerformancePurchaseDto> recentPurchases = metricsService.getRecentPurchases();
+        logger.info("Successfully fetched recent purchases");
+
+        logger.info("Sending recent purchases response to client");
         return ResponseEntity.ok(recentPurchases);
     }
-
 }
