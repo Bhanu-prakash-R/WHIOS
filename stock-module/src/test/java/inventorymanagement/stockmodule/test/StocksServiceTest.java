@@ -1,24 +1,24 @@
 package inventorymanagement.stockmodule.test;
 
-import inventorymanagement.stockmodule.Client.PurchaseFeignClient;
-import inventorymanagement.stockmodule.Client.VendorFeignClient;
-import inventorymanagement.stockmodule.Client.ZoneFeignClient;
-import inventorymanagement.stockmodule.dao.NotificationRepository;
-import inventorymanagement.stockmodule.dao.StocksRepository;
-import inventorymanagement.stockmodule.dto.ItemNameQuantityDto;
-import inventorymanagement.stockmodule.dto.PurchaseDetailsDto;
-import inventorymanagement.stockmodule.dto.StockDTO;
-import inventorymanagement.stockmodule.entity.Notification;
-import inventorymanagement.stockmodule.entity.Stocks;
-import inventorymanagement.stockmodule.exception.StockNotFoundException;
-import inventorymanagement.stockmodule.service.StocksService;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.inventorymanagement.stockmodule.client.PurchaseFeignClient;
+import com.inventorymanagement.stockmodule.client.VendorFeignClient;
+import com.inventorymanagement.stockmodule.client.ZoneFeignClient;
+import com.inventorymanagement.stockmodule.dao.NotificationRepository;
+import com.inventorymanagement.stockmodule.dao.StocksRepository;
+import com.inventorymanagement.stockmodule.dto.ItemNameQuantityDto;
+import com.inventorymanagement.stockmodule.dto.PurchaseDetailsDto;
+import com.inventorymanagement.stockmodule.dto.StockDTO;
+import com.inventorymanagement.stockmodule.entity.Notification;
+import com.inventorymanagement.stockmodule.entity.Stocks;
+import com.inventorymanagement.stockmodule.exception.StockNotFoundException;
+import com.inventorymanagement.stockmodule.service.StocksService;
 
 import java.time.LocalDateTime;
 import java.util.*;

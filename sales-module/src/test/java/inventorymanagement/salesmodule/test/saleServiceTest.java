@@ -1,21 +1,6 @@
 package inventorymanagement.salesmodule.test;
 
 
-import inventorymanagement.salesmodule.Dto.SaleRequestDto;
-import inventorymanagement.salesmodule.Dto.SaleResponseDto;
-import inventorymanagement.salesmodule.Dto.SalesMetricsDto;
-import inventorymanagement.salesmodule.Dto.StockDTO;
-import inventorymanagement.salesmodule.Dto.CustomerResponseDto;
-import inventorymanagement.salesmodule.Repository.salesRepo;
-import inventorymanagement.salesmodule.Service.customerService;
-import inventorymanagement.salesmodule.Service.saleService;
-import inventorymanagement.salesmodule.exception.CustomerNotFoundException;
-import inventorymanagement.salesmodule.exception.InsufficientStockException;
-import inventorymanagement.salesmodule.exception.SaleNotFoundException;
-import inventorymanagement.salesmodule.feign.StockFeignClient;
-import inventorymanagement.salesmodule.model.ContactDetails;
-import inventorymanagement.salesmodule.model.Customer;
-import inventorymanagement.salesmodule.model.Sales;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +10,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import com.inventorymanagement.salesmodule.dto.CustomerResponseDto;
+import com.inventorymanagement.salesmodule.dto.SaleRequestDto;
+import com.inventorymanagement.salesmodule.dto.SaleResponseDto;
+import com.inventorymanagement.salesmodule.dto.SalesMetricsDto;
+import com.inventorymanagement.salesmodule.dto.StockDTO;
+import com.inventorymanagement.salesmodule.exception.CustomerNotFoundException;
+import com.inventorymanagement.salesmodule.exception.InsufficientStockException;
+import com.inventorymanagement.salesmodule.exception.SaleNotFoundException;
+import com.inventorymanagement.salesmodule.feign.StockFeignClient;
+import com.inventorymanagement.salesmodule.model.ContactDetails;
+import com.inventorymanagement.salesmodule.model.Customer;
+import com.inventorymanagement.salesmodule.model.Sales;
+import com.inventorymanagement.salesmodule.repository.salesRepo;
+import com.inventorymanagement.salesmodule.service.SaleService;
+import com.inventorymanagement.salesmodule.service.customerService;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -49,7 +50,7 @@ public class saleServiceTest {
     private StockFeignClient stockFeignClient;
 
     @InjectMocks
-    private saleService saleService;
+    private SaleService saleService;
 
     private Sales sale1;
     private Sales sale2;
